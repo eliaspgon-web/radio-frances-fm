@@ -1,0 +1,7 @@
+# segredos e dados gerados no servidor (nunca versionar)
+data/senha.php
+data/segredos.php
+data/cache-*.json
+data/config.backup.json
+uploads/*
+!uploads/.htaccess

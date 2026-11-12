@@ -1,0 +1,5 @@
+# Bloqueia acesso direto a tudo em data/, exceto o config.json (usado como reserva)
+Require all denied
+<Files "config.json">
+  Require all granted
+</Files>

@@ -1,0 +1,6 @@
+# Impede execução de scripts na pasta de envios
+php_flag engine off
+<FilesMatch "\.(php|phtml|phar|pl|py|cgi|sh)$">
+  Require all denied
+</FilesMatch>
+Options -Indexes

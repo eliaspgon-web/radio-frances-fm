@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Francês FM | A voz do Rancho do Maia</title>
+<meta name="description" content="Ouça a Rede Francês FM ao vivo: Maceió 106.1 e Caruaru 105.5.">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/site/icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Francês FM">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+:root{--card:color-mix(in srgb,var(--sand) 92%,#fff);--line-c:color-mix(in srgb,#fff 10%,transparent);--txt2:#c7c7c7;--txt3:#8b8d96;--grad:linear-gradient(135deg,#ffae02,#ff4b21 35%,#ff0039 60%,#c2005e 82%,#660099)}
+body{font-family:"Inter",system-ui,sans-serif;background:var(--deep);color:#fff;min-height:100vh;overflow-x:hidden}
+/* fundo do site: foto fixa à direita + véus */
+body::before{content:"";position:fixed;top:0;right:0;bottom:0;width:100%;max-width:617px;background:var(--bg-photo) 100% center/cover no-repeat;z-index:-2}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(700px 500px at 85% 15%,color-mix(in srgb,var(--primary) 26%,transparent),transparent 70%),
+ linear-gradient(90deg,var(--deep) 0,var(--deep) 30%,color-mix(in srgb,var(--deep) 60%,transparent) 62%,color-mix(in srgb,var(--deep) 15%,transparent) 100%)}
+@media (max-width:900px){body::after{background:radial-gradient(500px 400px at 80% 10%,color-mix(in srgb,var(--primary) 30%,transparent),transparent 70%),linear-gradient(180deg,color-mix(in srgb,var(--deep) 45%,transparent) 0,color-mix(in srgb,var(--deep) 78%,transparent) 40%,var(--deep) 80%)}}
+.wrap{width:100%;max-width:1180px;margin:0 auto;padding:0 20px}
+
+/* ---------- cabeçalho (igual ao site) ---------- */
+.header{position:sticky;top:0;z-index:40;padding-top:env(safe-area-inset-top);transition:background .3s,backdrop-filter .3s}
+.header.solid{background:color-mix(in srgb,var(--deep) 82%,transparent);backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--line-c)}
+.header .wrap{display:flex;align-items:center;gap:20px;height:76px}
+.h-logo{display:flex;align-items:center;flex:0 0 auto}
+.h-logo [data-site=logo]{display:flex;height:38px}
+.h-logo .site-logo{height:38px;width:auto}
+.h-links{display:none;gap:44px;margin:0 auto;font-weight:600;font-size:1rem;letter-spacing:.01em}
+.h-links a{text-decoration:none;color:#fff;opacity:.9;position:relative;padding:6px 0}
+.h-links a:hover{opacity:1}
+.h-links a::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:3px;border-radius:3px;background:var(--primary);transform:scaleX(0);transition:.2s}
+.h-links a:hover::after,.h-links a.on::after{transform:scaleX(1)}
+.h-social{display:none;gap:10px}
+.soc{width:30px;height:30px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;text-decoration:none}
+.soc svg{width:16px;height:16px}
+.h-mobile{display:flex;gap:8px;margin-left:auto}
+.ic-btn{height:44px;min-width:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line-c);background:rgba(255,255,255,.06);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:.85rem}
+.ic-btn svg{width:22px;height:22px}
+.ic-btn img{height:12px}
+@media (min-width:1024px){.h-links,.h-social{display:flex}.h-mobile .menu-btn{display:none}}
+
+/* ---------- herói: player do site ---------- */
+.hero{padding:34px 0 10px}
+.hero-grid{display:grid;grid-template-columns:1fr;gap:12px;justify-items:center;text-align:center}
+@media (min-width:900px){.hero-grid{justify-items:start;text-align:left;max-width:560px}}
+.kicker{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--txt2)}
+.kicker img{height:13px}
+.kicker b{color:#fff;background:var(--primary);padding:3px 8px;border-radius:5px;letter-spacing:.08em}
+.hero h1{margin:6px 0 0;font-size:clamp(2.1rem,6vw,3.6rem);line-height:1.02;font-weight:800;letter-spacing:-.03em}
+.hero h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.player{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:10px}
+@media (min-width:900px){.player{flex-direction:row;gap:26px;text-align:left}}
+.freq{font-size:1.15rem;font-weight:700;color:var(--txt2)}
+.bigplay{position:relative;width:min(227px,58vw);aspect-ratio:1;border:0;padding:0;background:transparent;cursor:pointer;border-radius:50%;-webkit-tap-highlight-color:transparent}
+.bigplay .pp{position:absolute;inset:0;background:url("assets/site/play.svg") center/cover no-repeat;animation:pulseo 2s cubic-bezier(.4,0,.6,1) infinite;transition:transform .2s}
+body[data-player=playing] .bigplay .pp,body[data-player=loading] .bigplay .pp{background-image:url("assets/site/pause.svg");animation:none}
+.bigplay:hover .pp{transform:scale(1.03)}
+.bigplay:active .pp{transform:scale(.96)}
+@keyframes pulseo{50%{opacity:.6}}
+.bigplay .spin{position:absolute;inset:18%;border-radius:50%;border:3px solid transparent;border-top-color:var(--sun);opacity:0}
+body[data-player=loading] .bigplay .spin{opacity:1;animation:spin 1s linear infinite}
+.bigplay .halo{position:absolute;inset:6%;border-radius:50%;box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 50%,transparent);pointer-events:none}
+body[data-player=playing] .bigplay .halo{animation:halo 2s ease-out infinite}
+@keyframes halo{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}100%{box-shadow:0 0 0 40px transparent}}
+.now{display:flex;flex-direction:column;align-items:inherit;gap:4px;max-width:320px}
+.now small{font-size:1rem;font-weight:600;color:var(--txt2)}
+.now strong{font-size:.92rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.02em;line-height:1.3;min-height:1.2em}
+.now .np-eq{color:var(--accent);height:14px}
+.station-name{font-size:.82rem;color:var(--txt3);font-weight:600}
+.status{font-size:.75rem;color:var(--txt3)}
+.status:empty{display:none}
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+@media (min-width:900px){.actions{justify-content:flex-start}}
+.pill{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 20px 0 8px;border-radius:99px;border:1px solid var(--line-c);background:rgba(255,255,255,.07);backdrop-filter:blur(10px);color:#fff;text-decoration:none;font-weight:800;font-size:.9rem;letter-spacing:.03em}
+.pill .ico{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--primary)}
+.pill .ico svg{width:18px;height:18px}
+.pill small{display:block;font-size:.68rem;font-weight:600;color:var(--txt2);letter-spacing:0}
+.pill.watch .ico{position:relative}
+body[data-video=live] .pill.watch{border-color:color-mix(in srgb,var(--primary) 70%,transparent);background:color-mix(in srgb,var(--primary) 18%,transparent)}
+body[data-video=live] .pill.watch .ico::after{content:"";position:absolute;top:0;right:0;width:10px;height:10px;border-radius:50%;background:#ff2d2d;border:2px solid #000;animation:pulse 1.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #ff2d2d}100%{box-shadow:0 0 0 8px transparent}}
+.pill.watch[hidden]{display:none}
+.vol{display:flex;align-items:center;gap:8px;color:var(--txt3);height:50px;padding:0 14px;border-radius:99px;border:1px solid var(--line-c);background:rgba(255,255,255,.04)}
+.vol input{width:110px}
+.vol button{background:none;border:0;color:inherit;font-size:1rem}
+
+/* ---------- títulos de seção (estilo do site) ---------- */
+.sec{padding:34px 0 0}
+.sec-h{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+.sec-h h2{margin:0;display:inline-flex;align-items:center;gap:10px;font-size:1.45rem;font-weight:800;color:#fcfcfc;padding-bottom:10px;border-bottom:4px solid #6b6d76;text-transform:uppercase;letter-spacing:-.01em}
+.sec-h h2 .ig{width:28px;height:28px;border-radius:8px;background:linear-gradient(45deg,#f9a825,#e1306c,#833ab4);display:grid;place-items:center}
+.sec-h h2 .ig svg{width:16px;height:16px}
+.sec-h a.more{color:var(--txt2);font-size:.82rem;font-weight:700;text-decoration:none;padding-bottom:12px}
+.sec-h a.more:hover{color:#fff}
+
+/* rádios ao vivo (cards do site) */
+.stations{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:16px}
+.station{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:8px;border:1px solid var(--primary);background:var(--card);color:#fff;text-align:left;transition:transform .15s,box-shadow .15s}
+.station:hover{transform:translateY(-2px);box-shadow:0 10px 26px color-mix(in srgb,var(--primary) 25%,transparent)}
+.station.active{background:linear-gradient(90deg,color-mix(in srgb,var(--primary) 22%,var(--card)),var(--card))}
+.station-logo{width:28px;height:28px;flex:0 0 28px;background:url("assets/site/live.svg") center/contain no-repeat;border-radius:0!important}
+.station-logo>*{display:none}
+body[data-player=playing] .station.active .station-logo{filter:drop-shadow(0 0 4px var(--accent)) brightness(1.4)}
+.station-info{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.station-info strong{font-size:1rem;font-weight:700;text-transform:uppercase}
+.station-info small{font-size:.85rem;color:#fff;font-weight:500;opacity:.85}
+.station-state em{font-style:normal}
+.station .st-play{opacity:1!important;transform:none!important;width:auto;height:auto;border-radius:6px;background:var(--primary);padding:8px 12px;font-size:0!important}
+.station .st-play::after{content:"TOCAR";font-size:.85rem;font-weight:700;color:#fcfcfc}
+.station .st-on{border-radius:6px;padding:8px 12px;font-size:.85rem!important;background:var(--accent);text-transform:uppercase}
+.station-eq{color:var(--accent)}
+
+/* atalhos (peça sua música / alô) */
+.shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+[data-shortcuts]{display:contents}
+.shortcut{position:relative;display:flex;align-items:center;gap:14px;min-height:92px;padding:16px 18px;border-radius:16px;color:#fff;text-decoration:none;font-weight:800;font-size:1.02rem;line-height:1.15;text-transform:uppercase;overflow:hidden;isolation:isolate;border:1px solid var(--line-c);background:var(--card)}
+.shortcut::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--grad);opacity:.92}
+.shortcut:nth-child(even)::before{background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 40%,#660099))}
+.shortcut span{font-size:1.7rem;width:50px;height:50px;flex:0 0 50px;border-radius:14px;background:rgba(0,0,0,.22);display:grid;place-items:center}
+.shortcut::after{content:"";position:absolute;right:16px;top:50%;width:22px;height:22px;transform:translateY(-50%);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='white' d='M16 3C9 3 3.3 8.6 3.3 15.6c0 2.4.7 4.7 1.9 6.7L3 29l6.9-2.2a12.7 12.7 0 0 0 6.1 1.5c7 0 12.7-5.6 12.7-12.6S23 3 16 3Z'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.9}
+.shortcut:hover{transform:translateY(-2px)}
+@media (max-width:520px){.shortcut{flex-direction:column;align-items:flex-start;min-height:120px;font-size:.92rem}.shortcut::after{top:18px;transform:none}}
+
+/* notícias formato story */
+.nk-row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:6px}
+.nk-row::-webkit-scrollbar{display:none}
+.nk-card{position:relative;flex:0 0 min(260px,68%);aspect-ratio:4/5;scroll-snap-align:start;border-radius:18px;overflow:hidden;text-decoration:none;color:#fff;border:1px solid var(--line-c);isolation:isolate;transition:transform .2s}
+.nk-card:hover{transform:translateY(-3px)}
+.nk-img{position:absolute;inset:0;z-index:-1;background:var(--grad)}
+.nk-img img{width:100%;height:100%;object-fit:cover}
+.nk-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 30%,transparent 45%,rgba(0,0,0,.88))}
+.nk-img span{position:absolute;right:14px;top:8px;font-size:2.6rem;font-weight:900;opacity:.35;z-index:1}
+.nk-img img~span{display:none}
+.nk-img b{position:absolute;left:12px;top:12px;z-index:1;background:var(--primary);font-size:.64rem;padding:4px 9px;border-radius:5px;text-transform:uppercase}
+.nk-play{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);z-index:1;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);display:grid;place-items:center;font-style:normal}
+.nk-txt{position:absolute;left:0;right:0;bottom:0;padding:16px}
+.nk-txt small{display:flex;align-items:center;font-size:.7rem;font-weight:700;color:var(--txt2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.nk-txt h3{margin:0;font-size:1.02rem;font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+[data-news] .nc-dots{color:#fff;justify-content:flex-start;margin-top:14px}
+
+/* contato */
+[data-contact]{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+[data-contact] .contact-btn{background:var(--card);border:1px solid var(--line-c);color:#fff;border-radius:14px;padding:14px}
+[data-contact] .contact-btn:hover{border-color:var(--wa)}
+[data-contact] .contact-ico{background:rgba(255,255,255,.06)}
+[data-contact] .contact-txt small{color:var(--txt3);opacity:1}
+
+/* premium + rodapé */
+.premium{display:flex;align-items:center;gap:18px;margin-top:34px;padding:20px;border-radius:18px;background:var(--grad);color:#fff;text-decoration:none;font-weight:600}
+.premium b{display:block;font-size:1.3rem;font-weight:800;letter-spacing:-.01em}
+.premium span{flex:1;font-size:.9rem;opacity:.92}
+.premium i{font-style:normal;background:#fff;color:#000;font-weight:800;font-size:.8rem;padding:10px 14px;border-radius:10px;white-space:nowrap}
+.premium[hidden]{display:none}
+.footer{padding:40px 0 calc(120px + env(safe-area-inset-bottom))}
+.footer .wrap{display:flex;flex-direction:column;gap:22px;align-items:center;border-top:1px solid var(--line-c);padding-top:28px}
+.footer .copy{color:var(--txt3);font-size:.8rem;text-align:center}
+@media (min-width:1024px){.footer{padding-bottom:50px}}
+
+/* barra de abas (celular) */
+.tabbar{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(520px,calc(100% - 20px));height:70px;z-index:45;display:grid;grid-template-columns:1fr 1fr 84px 1fr 1fr;align-items:center;background:rgba(19,17,15,.88);backdrop-filter:blur(18px);border:1px solid var(--line-c);border-radius:24px;box-shadow:0 16px 40px rgba(0,0,0,.5);color:var(--txt3)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.64rem;font-weight:700;text-decoration:none;color:inherit;background:none;border:0;padding:8px 0}
+.tab svg{width:22px;height:22px}
+.tab.on,.tab:hover{color:#fff}
+.tab.on svg{color:var(--primary)}
+.tab-play{justify-self:center;position:relative;width:66px;height:66px;margin-top:-30px;border-radius:50%;border:4px solid #000;background:var(--grad);color:#fff;display:grid;place-items:center;box-shadow:0 10px 24px color-mix(in srgb,var(--primary) 50%,transparent)}
+.tab-play svg{width:26px;height:26px}
+body[data-player=playing] .tab-play::before{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--accent);animation:ping 1.6s ease-out infinite}
+@keyframes ping{from{transform:scale(.85);opacity:1}to{transform:scale(1.25);opacity:0}}
+@media (min-width:1024px){.tabbar{display:none}}
+.np-chip{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translate(-50%,16px);opacity:0;pointer-events:none;z-index:44;display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:99px;background:#fff;color:#000;box-shadow:0 10px 26px rgba(0,0,0,.4);font-size:.78rem;font-weight:700;transition:.3s;max-width:86%}
+.np-chip.show{transform:translate(-50%,0);opacity:1}
+.np-chip span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np-chip .np-eq{color:var(--primary)}
+@media (min-width:1024px){.np-chip{bottom:24px}}
+
+/* folhas */
+.sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s}
+.sheet.open{opacity:1;pointer-events:auto}
+.sheet-panel{position:absolute;background:#0d0c0b;color:#fff;transition:transform .32s cubic-bezier(.2,.8,.2,1);overflow:auto;border:1px solid var(--line-c)}
+.sheet-bottom .sheet-panel{left:50%;bottom:0;width:min(560px,100%);max-height:82vh;border-radius:26px 26px 0 0;transform:translate(-50%,100%);padding:10px 18px calc(26px + env(safe-area-inset-bottom))}
+.sheet-bottom.open .sheet-panel{transform:translate(-50%,0)}
+.sheet-bottom .stations{grid-template-columns:1fr}
+.grab{width:44px;height:5px;border-radius:9px;background:#3a3836;margin:4px auto 14px}
+.sheet-panel h3{margin:0 0 14px;font-size:1.2rem}
+.sheet-left .sheet-panel{top:0;bottom:0;left:0;width:min(330px,88vw);transform:translateX(-110%);display:flex;flex-direction:column;padding:calc(20px + env(safe-area-inset-top)) 16px 20px}
+.sheet-left.open .sheet-panel{transform:none}
+.menu-nav{display:flex;flex-direction:column;gap:2px;margin-top:22px}
+.menu-nav a,.menu-nav button{display:flex;align-items:center;gap:14px;padding:14px 10px;border-radius:12px;border:0;background:none;text-align:left;text-decoration:none;color:#fff;font-weight:600;font-size:1.25rem;letter-spacing:-.02em}
+.menu-nav a:hover,.menu-nav button:hover{background:rgba(255,255,255,.06)}
+.menu-nav span{width:28px;text-align:center;font-size:1.05rem}
+.menu-nav hr{border:0;border-top:1px solid var(--line-c);margin:10px 0}
+.install{display:none;margin-top:auto;padding:14px;border-radius:14px;background:var(--grad);color:#fff;border:0;font-weight:800;text-align:left}
+.install small{display:block;font-weight:500;opacity:.9}
+.install.show{display:block}
+#wa-fab{display:none}
+@media (min-width:1024px){#wa-fab{display:block}}
+.ios-tip{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:70;width:min(360px,92%);background:#fff;color:#111;border-radius:16px;padding:14px 16px;font-size:.85rem;box-shadow:0 18px 40px rgba(0,0,0,.45);display:none}
+.ios-tip.show{display:block}
+.ios-tip b{display:block;margin-bottom:4px}
+.ios-tip button{position:absolute;right:8px;top:6px;border:0;background:none;font-size:1.2rem}
+</style>
+</head>
+<body data-player="idle">
+<header class="header" id="topo">
+  <div class="wrap">
+    <a class="h-logo" href="#inicio" aria-label="Início"><span data-site="logo"></span></a>
+    <nav class="h-links">
+      <a href="#inicio" class="on">INÍCIO</a>
+      <a href="#radios-sec">RÁDIOS</a>
+      <a href="#noticias">NOTÍCIAS</a>
+      <a data-site="premium" target="_blank" rel="noopener">FRANCÊS PREMIUM</a>
+    </nav>
+    <div class="h-social">
+      <a class="soc" data-site="instagram" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm5 5.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM17.5 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg></a>
+      <a class="soc" data-site="youtube" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8ZM9.8 15.1V8.9l5.6 3.1Z"/></svg></a>
+      <a class="soc" data-site="facebook" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M14 8h3V4h-3c-2.8 0-4 1.8-4 4.3V10H7v4h3v8h4v-8h3l1-4h-4V8.6c0-.4.3-.6.7-.6Z"/></svg></a>
+    </div>
+    <div class="h-mobile">
+      <button class="ic-btn" data-toggle="#radios" aria-label="Trocar de rádio"><img src="assets/site/live.svg" alt=""><span data-np="city">Rádios</span></button>
+      <button class="ic-btn menu-btn" data-toggle="#menu" aria-label="Abrir menu"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 6h18v2.2H3zm0 4.9h18v2.2H3zm0 4.9h18V18H3z"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero" id="inicio">
+    <div class="wrap">
+      <div class="hero-grid">
+        <span class="kicker"><b>AO VIVO</b><img src="assets/site/live.svg" alt=""><span data-np="freq"></span></span>
+        <h1 data-site="slogan">A voz do Rancho do Maia</h1>
+        <div class="player">
+          <button class="bigplay" data-np="play" aria-label="Tocar"><span class="halo"></span><span class="pp"></span><span class="spin"></span></button>
+          <div class="now">
+            <span class="freq"><span data-np="freq"></span></span>
+            <small>Tocando agora <span class="np-eq"><i></i><i></i><i></i></span></small>
+            <strong data-np="song"></strong>
+            <span class="station-name" data-np="name"></span>
+            <span class="status" data-np="status"></span>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="pill watch" data-watch aria-label="Ver transmissão ao vivo no YouTube"><span class="ico"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h11a2 2 0 0 1 2 2v1.5l4-2.5v10l-4-2.5V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg></span><span>VEJA AO VIVO<small data-watch-sub>Canal no YouTube</small></span></button>
+          <div class="vol"><button data-np="mute" aria-label="Mudo">🔈</button><input type="range" min="0" max="1" step="0.01" data-np="vol" aria-label="Volume"><span>🔊</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <section class="sec" id="radios-sec">
+      <div class="sec-h"><h2>Rádios ao vivo</h2></div>
+      <div class="stations" data-stations></div>
+    </section>
+
+    <section class="sec">
+      <div class="shortcuts"><nav data-shortcuts aria-label="Atalhos"></nav></div>
+    </section>
+
+    <section class="sec" id="noticias">
+      <div class="sec-h"><h2><span class="ig"><svg viewBox="0 0 24 24"><path fill="#fff" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm5 5.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM17.5 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg></span><span data-news-title>Notícias</span></h2><a class="more" data-news-more target="_blank" rel="noopener">Ver mais →</a></div>
+      <div data-news data-variant="cards"></div>
+    </section>
+
+    <section class="sec" id="contato">
+      <div class="sec-h"><h2>Fale com a rádio</h2></div>
+      <div data-contact></div>
+    </section>
+
+    <a class="premium" data-site="premium" target="_blank" rel="noopener"><img src="assets/site/icone.svg" alt="" width="48" height="48"><span><b>Francês FM Premium</b>Ouça agora, sem propaganda e com melhor qualidade sonora.</span><i>OUVIR AGORA</i></a>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="h-social" style="display:flex">
+      <a class="soc" data-site="instagram" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm5 5.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM17.5 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg></a>
+      <a class="soc" data-site="youtube" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8ZM9.8 15.1V8.9l5.6 3.1Z"/></svg></a>
+      <a class="soc" data-site="facebook" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M14 8h3V4h-3c-2.8 0-4 1.8-4 4.3V10H7v4h3v8h4v-8h3l1-4h-4V8.6c0-.4.3-.6.7-.6Z"/></svg></a>
+    </div>
+    <p class="copy">© <span id="ano">2026</span> | <span data-site="nome"></span> | Todos os direitos reservados</p>
+  </div>
+</footer>
+
+<div class="np-chip" id="npchip"><span class="np-eq"><i></i><i></i><i></i></span><span data-np="song"></span></div>
+
+<nav class="tabbar" aria-label="Navegação">
+  <a class="tab on" href="#inicio" data-tab="inicio"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 3 10.5V21h6v-6h6v6h6V10.5z"/></svg>Início</a>
+  <a class="tab" href="#noticias" data-tab="noticias"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h13v15a1 1 0 0 0 2 0V8h2v11a3 3 0 0 1-3 3H6a2 2 0 0 1-2-2zm3 4v3h7V8zm0 5v2h7v-2zm0 4v2h7v-2z"/></svg>Notícias</a>
+  <button class="tab-play" data-np="play" aria-label="Tocar">
+    <svg class="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+    <svg class="i-pause" viewBox="0 0 24 24"><path fill="currentColor" d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+    <svg class="i-load" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
+  </button>
+  <button class="tab" data-watch><svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h11a2 2 0 0 1 2 2v1.5l4-2.5v10l-4-2.5V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg>Veja</button>
+  <a class="tab" href="#contato" data-tab="contato"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2Z"/></svg>Contato</a>
+</nav>
+
+<div class="sheet sheet-bottom" id="radios" role="dialog" aria-label="Escolha sua rádio">
+  <div class="sheet-panel"><div class="grab"></div><h3>Rádios ao vivo</h3><div class="stations" data-stations></div></div>
+</div>
+
+<div class="sheet sheet-left" id="menu" role="dialog" aria-label="Menu">
+  <div class="sheet-panel">
+    <span class="h-logo" data-site="logo"></span>
+    <nav class="menu-nav">
+      <a href="#inicio" data-close-sheet><span>▶</span>Início</a>
+      <button data-close-sheet data-toggle="#radios"><span>📍</span>Rádios</button>
+      <a href="#noticias" data-close-sheet><span>📰</span>Notícias</a>
+      <button data-close-sheet data-watch><span>📺</span>Veja ao vivo</button>
+      <a href="#contato" data-close-sheet><span>💬</span>Fale com a rádio</a>
+      <a data-site="premium" target="_blank" rel="noopener"><span>⭐</span>Francês Premium</a>
+      <hr>
+      <button data-open-admin><span>⚙</span>Painel gerencial</button>
+    </nav>
+    <button class="install" id="btn-install">📲 Instalar o app<small>Abra direto da tela inicial do celular</small></button>
+  </div>
+</div>
+
+<div class="ios-tip" id="ios-tip"><button aria-label="Fechar" onclick="this.parentNode.classList.remove('show')">×</button><b>Instale no iPhone</b>Toque em <b style="display:inline">Compartilhar ⬆︎</b> e depois em <b style="display:inline">“Adicionar à Tela de Início”</b>.</div>
+
+<script>
+(function(){
+  document.getElementById("ano").textContent=new Date().getFullYear();
+  var hd=document.getElementById("topo"),chip=document.getElementById("npchip"),pl=document.querySelector(".bigplay");
+  var secs=["inicio","noticias","contato"].map(function(i){return document.getElementById(i)});
+  function onScroll(){
+    hd.classList.toggle("solid",scrollY>30);
+    var at="inicio";secs.forEach(function(s){if(s&&s.getBoundingClientRect().top<innerHeight*.45)at=s.id});
+    document.querySelectorAll(".tab[data-tab]").forEach(function(t){t.classList.toggle("on",t.dataset.tab===at)});
+    chip.classList.toggle("show",pl.getBoundingClientRect().bottom<0&&document.body.dataset.player==="playing"&&document.body.classList.contains("has-song"));
+  }
+  addEventListener("scroll",onScroll,{passive:true});onScroll();
+  // instalar como app (Android/Chrome) e dica para iPhone
+  var deferred=null,btn=document.getElementById("btn-install"),tip=document.getElementById("ios-tip");
+  var standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+  var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferred=e;btn.classList.add("show")});
+  if(ios&&!standalone){btn.classList.add("show")}
+  btn.addEventListener("click",function(){ if(deferred){deferred.prompt();deferred=null;btn.classList.remove("show")} else if(ios){document.getElementById("menu").classList.remove("open");tip.classList.add("show")} });
+})();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

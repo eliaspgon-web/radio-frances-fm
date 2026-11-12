@@ -1,0 +1,22 @@
+{
+  "name": "Rede Francês FM",
+  "short_name": "Francês FM",
+  "description": "Ouça a Rede Francês FM ao vivo — Maceió 106.1 e Caruaru 105.5.",
+  "lang": "pt-BR",
+  "start_url": "./index.html?app=1",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": ["music", "entertainment", "news"],
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Ouvir ao vivo", "url": "./index.html?app=1#inicio" },
+    { "name": "Notícias", "url": "./index.html?app=1#noticias" }
+  ]
+}
