@@ -37,6 +37,14 @@ Para atualizar depois: baixe o ZIP novo e envie por cima, **sem apagar** `data/`
 >
 > GitHub Pages / Netlify (sem PHP) tocam a rádio, mas o painel não salva e as notícias não carregam (o feed do Francês News não pode ser lido direto pelo navegador).
 
+## Versão rápida: GitHub Pages (toca a rádio dentro do app, sem servidor)
+1. No GitHub: **Settings → General → Danger Zone → Change visibility → Public** (o Pages gratuito exige repositório público; senhas e tokens não estão no repositório).
+2. **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main` / `(root)` → Save**.
+3. Em 1–2 minutos o app fica em **https://eliaspgon-web.github.io/radio-frances-fm/** — o ▶ toca dentro do app, no computador e no celular (dá para instalar na tela inicial).
+4. As notícias do Francês News e as capas são atualizadas sozinhas **a cada 30 min** pela rotina `.github/workflows/noticias.yml` (aba **Actions → Atualizar notícias → Run workflow** roda na hora).
+
+No Pages não há PHP: o painel, usuários, Instagram, “VEJA” com detecção de live e “Tocando agora” completos funcionam só no servidor com PHP. Para mudar rádios/cores no Pages, edite `data/config.json` no GitHub.
+
 ## Instalar no celular
 - **Android (Chrome):** abra o site → menu ⋮ → **Instalar app** (ou "Adicionar à tela inicial").
 - **iPhone (Safari):** abra o site → botão Compartilhar → **Adicionar à Tela de Início**.

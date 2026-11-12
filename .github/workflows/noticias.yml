@@ -1,0 +1,36 @@
+# Atualiza as notícias (Francês News) e as capas do carrossel a cada 30 minutos
+# para a versão sem PHP do app (GitHub Pages).
+name: Atualizar notícias
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"   # a cada 30 min
+  workflow_dispatch:          # botão "Run workflow" para rodar na hora
+  push:
+    paths: ["data/config.json", "scripts/atualizar_noticias.py"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: noticias
+  cancel-in-progress: false
+
+jobs:
+  noticias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet pillow
+      - run: python scripts/atualizar_noticias.py
+      - name: Salvar no repositório (se mudou)
+        run: |
+          git add -A data/noticias.json assets/noticias
+          if git diff --cached --quiet; then echo "Sem novidades."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Notícias atualizadas automaticamente"
+          git push

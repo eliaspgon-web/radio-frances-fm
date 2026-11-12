@@ -13,6 +13,7 @@
   const API = "api/";
 
   let config = null;
+  let ESTATICO = false; // hospedado sem PHP (ex.: GitHub Pages): só arquivos estáticos
   let sessao = null; // { token, usuario, nome, papel, papelNome }
   const LS_SES = "radioapp.sessao";
   const ehAdmin = () => !!sessao && sessao.papel === "admin";
@@ -55,7 +56,7 @@
     for (const url of [API + "config.php", "data/config.json"]) {
       try {
         const r = await fetch(url + "?t=" + Date.now(), { cache: "no-store" });
-        if (r.ok) { const j = await r.json(); if (j && j.radios) return j; }
+        if (r.ok) { const j = await r.json(); if (j && j.radios) { ESTATICO = !url.startsWith(API); return j; } }
       } catch (e) {}
     }
     return { site: { nome: "Rádio" }, radios: [], noticias: { limite: 5, feeds: [], manuais: [] } };
@@ -207,7 +208,8 @@
     let txt = "";
     if (r && r.tocandoTexto) txt = r.tocandoTexto;
     else if (!PREVIEW && mount) {
-      for (const url of [API + "tocando.php?mount=" + mount, "/playing/" + mount]) {
+      const base = (config.site && config.site.tocandoBase) || "https://francesfm.com.br/playing/";
+      for (const url of ESTATICO ? [base + mount] : [API + "tocando.php?mount=" + mount, "/playing/" + mount]) {
         try { const x = await fetch(url, { cache: "no-store" }); if (x.ok) { const j = await x.json(); txt = String(j.text || "").replace(/\uFFFD|ï¿½/g, "").trim(); if (txt) break; } } catch (e) {}
       }
     }
@@ -231,7 +233,7 @@
   let estadoVideo = null;
 
   async function checarAoVivo() {
-    if (PREVIEW) { marcarVideo({ aoVivo: false }); return; }
+    if (PREVIEW || ESTATICO) { marcarVideo({ aoVivo: false }); return; }
     try {
       const r = await fetch(API + "aovivo.php?t=" + Date.now(), { cache: "no-store" });
       if (r.ok) { estadoVideo = await r.json(); marcarVideo(estadoVideo); return; }
@@ -291,10 +293,13 @@
     const manuais = (config.noticias && config.noticias.manuais) || [];
     if (PREVIEW && Array.isArray(config.noticias && config.noticias.previa)) return config.noticias.previa.slice(0, lim);
     if (!PREVIEW) {
-      try {
-        const r = await fetch(API + "noticias.php?t=" + Date.now(), { cache: "no-store" });
-        if (r.ok) { const j = await r.json(); if (Array.isArray(j) && j.length) return j.slice(0, lim); }
-      } catch (e) {}
+      // com PHP: api/noticias.php · sem PHP (GitHub Pages): data/noticias.json, gerado pela rotina do GitHub
+      for (const url of ESTATICO ? ["data/noticias.json"] : [API + "noticias.php", "data/noticias.json"]) {
+        try {
+          const r = await fetch(url + "?t=" + Date.now(), { cache: "no-store" });
+          if (r.ok) { const j = await r.json(); const l = Array.isArray(j) ? j : j && j.itens; if (Array.isArray(l) && l.length) return l.slice(0, lim); }
+        } catch (e) {}
+      }
     }
     return top5(manuais.slice(), lim);
   }
@@ -400,7 +405,7 @@
   function montarCards(box, itens) {
     box.innerHTML = `<div class="nk-row">${itens.map((n, i) => `
       <a class="nk-card" href="${esc(safeUrl(n.link) || "#")}" target="_blank" rel="noopener">
-        <div class="nk-img">${safeUrl(n.imagem) ? `<img src="${esc(safeUrl(n.imagem))}" alt="" loading="lazy" onerror="this.remove()">` : ""}<span>${String(i + 1).padStart(2, "0")}</span>${n.destaque ? `<b>Destaque</b>` : ""}${n.video ? `<em class="nk-play">▶</em>` : ""}</div>
+        <div class="nk-img"><i class="nk-brand" aria-hidden="true">${esc(n.fonte || n.categoria || (config.site && config.site.nome) || "Notícias")}</i>${safeUrl(n.imagem) ? `<img src="${esc(safeUrl(n.imagem))}" alt="" loading="lazy" onerror="this.remove()">` : ""}<span>${String(i + 1).padStart(2, "0")}</span>${n.destaque ? `<b>Destaque</b>` : ""}${n.video ? `<em class="nk-play">▶</em>` : ""}</div>
         <div class="nk-txt"><small>${n.fonte === "Instagram" ? `<i class="ig-dot"></i>` : ""}${esc([n.fonte || n.categoria, fmtData(n.data)].filter(Boolean).join(" · "))}</small>
         <h3>${esc(n.titulo)}</h3></div>
       </a>`).join("")}</div>
@@ -473,6 +478,7 @@
       if (!u || u.hash !== (await sha(senha))) return { erro: "Usuário ou senha incorretos." };
       return { token: "previa", usuario: u.usuario, nome: u.nome, papel: u.papel, papelNome: PAPEIS[u.papel] };
     }
+    if (ESTATICO) return { erro: "Este endereço é a versão sem servidor (GitHub Pages): o painel não salva aqui. Use o app publicado no servidor com PHP (ex.: francesfm.com.br/app)." };
     try {
       const r = await fetch(API + "auth.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "login", usuario, senha }) });
       const j = await r.json();
