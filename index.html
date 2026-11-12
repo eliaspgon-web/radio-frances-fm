@@ -154,12 +154,7 @@ body[data-player=playing] .station.active .station-logo{filter:drop-shadow(0 0 4
 [data-contact] .contact-ico{background:rgba(255,255,255,.06)}
 [data-contact] .contact-txt small{color:var(--txt3);opacity:1}
 
-/* premium + rodapé */
-.premium{display:flex;align-items:center;gap:18px;margin-top:34px;padding:20px;border-radius:18px;background:var(--grad);color:#fff;text-decoration:none;font-weight:600}
-.premium b{display:block;font-size:1.3rem;font-weight:800;letter-spacing:-.01em}
-.premium span{flex:1;font-size:.9rem;opacity:.92}
-.premium i{font-style:normal;background:#fff;color:#000;font-weight:800;font-size:.8rem;padding:10px 14px;border-radius:10px;white-space:nowrap}
-.premium[hidden]{display:none}
+/* rodapé */
 .footer{padding:40px 0 calc(120px + env(safe-area-inset-bottom))}
 .footer .wrap{display:flex;flex-direction:column;gap:22px;align-items:center;border-top:1px solid var(--line-c);padding-top:28px}
 .footer .copy{color:var(--txt3);font-size:.8rem;text-align:center}
@@ -217,7 +212,6 @@ body[data-player=playing] .tab-play::before{content:"";position:absolute;inset:-
       <a href="#inicio" class="on">INÍCIO</a>
       <a href="#radios-sec">RÁDIOS</a>
       <a href="#noticias">NOTÍCIAS</a>
-      <a data-site="premium" target="_blank" rel="noopener">FRANCÊS PREMIUM</a>
     </nav>
     <div class="h-social">
       <a class="soc" data-site="instagram" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm5 5.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM17.5 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg></a>
@@ -275,7 +269,6 @@ body[data-player=playing] .tab-play::before{content:"";position:absolute;inset:-
       <div data-contact></div>
     </section>
 
-    <a class="premium" data-site="premium" target="_blank" rel="noopener"><img src="assets/site/icone.svg" alt="" width="48" height="48"><span><b>Francês FM Premium</b>Ouça agora, sem propaganda e com melhor qualidade sonora.</span><i>OUVIR AGORA</i></a>
   </div>
 </main>
 
@@ -317,7 +310,6 @@ body[data-player=playing] .tab-play::before{content:"";position:absolute;inset:-
       <a href="#noticias" data-close-sheet><span>📰</span>Notícias</a>
       <button data-close-sheet data-watch><span>📺</span>Veja ao vivo</button>
       <a href="#contato" data-close-sheet><span>💬</span>Fale com a rádio</a>
-      <a data-site="premium" target="_blank" rel="noopener"><span>⭐</span>Francês Premium</a>
       <hr>
       <button data-open-admin><span>⚙</span>Painel gerencial</button>
     </nav>

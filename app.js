@@ -84,7 +84,7 @@
     $$("[data-site]").forEach((el) => {
       const k = el.dataset.site;
       if (k === "logo") el.innerHTML = imgHTML(s.logo, s.nome, "site-logo");
-      else if (["instagram", "youtube", "facebook", "premium", "portal"].includes(k)) {
+      else if (["instagram", "youtube", "facebook", "portal"].includes(k)) {
         if (s[k]) { el.href = s[k]; el.hidden = false; } else el.hidden = true;
       } else el.textContent = s[k] || "";
     });
