@@ -29,6 +29,7 @@ if (!$auto && $modo !== 'manual') {                       // fonte fora do ar
 }
 foreach ($saida as &$s) {
     if (empty($s['imagem']) && !empty($s['link'])) $s['imagem'] = ogImagem((string)$s['link']); // capa da matéria
+    if (!empty($s['imagem'])) $s['imagem'] = importarImagem((string)$s['imagem']);              // cópia local da capa
     $s['modo'] = $modo;
 }
 unset($s);

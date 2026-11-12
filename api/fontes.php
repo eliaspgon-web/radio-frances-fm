@@ -88,3 +88,34 @@ function ogImagem(string $link): string {
     cacheSalvar($k, ['img' => $img]);
     return $img;
 }
+
+/**
+ * Importa a imagem da notícia para o próprio servidor (uploads/noticias/), reduzida para no máx. 800 px.
+ * Assim o carrossel não depende do site de origem (e links do Instagram, que expiram, continuam valendo).
+ * Devolve o caminho local; se não conseguir, devolve a URL original.
+ */
+function importarImagem(string $url): string {
+    if (!preg_match('#^https?://#i', $url)) return $url;
+    $dir = __DIR__ . '/../uploads/noticias';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) return $url;
+    $nome = substr(sha1($url), 0, 20) . '.jpg';
+    $arq = "$dir/$nome";
+    if (is_file($arq) && filesize($arq) > 0) return "uploads/noticias/$nome";
+    if (mt_rand(1, 20) === 1) foreach (glob("$dir/*.jpg") ?: [] as $velho) if (filemtime($velho) < time() - 7 * 86400) @unlink($velho); // limpeza
+    $bytes = baixar($url, 10);
+    if (!$bytes || strlen($bytes) > 8 * 1024 * 1024) return $url;
+    $info = @getimagesizefromstring($bytes);
+    if (!$info || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP, IMAGETYPE_GIF], true)) return $url; // só imagens de verdade
+    if (function_exists('imagecreatefromstring') && ($im = @imagecreatefromstring($bytes))) {
+        $w = imagesx($im); $h = imagesy($im); $k = min(1, 800 / max(1, $w));
+        $nw = (int)round($w * $k); $nh = (int)round($h * $k);
+        $out = imagecreatetruecolor($nw, $nh);
+        imagefill($out, 0, 0, imagecolorallocate($out, 0, 0, 0));
+        imagecopyresampled($out, $im, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        $ok = imagejpeg($out, $arq, 80);
+        imagedestroy($im); imagedestroy($out);
+        return $ok ? "uploads/noticias/$nome" : $url;
+    }
+    if ($info[2] === IMAGETYPE_JPEG && file_put_contents($arq, $bytes) !== false) return "uploads/noticias/$nome"; // sem GD: guarda o JPEG original
+    return $url;
+}
