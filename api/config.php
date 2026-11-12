@@ -4,7 +4,7 @@ require __DIR__ . '/_lib.php';
 if ($_SERVER['REQUEST_METHOD'] === 'GET') responder(lerConfig());
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!senhaOk($_SERVER['HTTP_X_ADMIN_SENHA'] ?? null)) responder(['erro' => 'Senha inválida'], 401);
+    exigir();
     $cfg = corpoJson();
     if (!isset($cfg['site'], $cfg['radios']) || !is_array($cfg['radios'])) responder(['erro' => 'Configuração inválida'], 400);
     $json = json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

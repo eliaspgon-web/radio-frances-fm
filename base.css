@@ -197,3 +197,25 @@ body[data-player=playing] .station.active .station-eq{display:inline-flex}
 .ig-status.ok{color:#11803f}
 .drag.ig{background:linear-gradient(45deg,#f9a825,#e1306c,#833ab4);color:#fff}
 .ig-dot{display:inline-block;width:10px;height:10px;border-radius:3px;background:linear-gradient(45deg,#f9a825,#e1306c,#833ab4);margin-right:5px;vertical-align:-1px}
+
+/* ===== Login e usuários do painel ===== */
+.adm-login-form{display:flex;flex-direction:column;gap:12px;margin-top:18px;text-align:left}
+.adm-login-form .btn{padding:13px;font-size:.95rem}
+.adm-login .f input{padding:12px 14px;border:1.5px solid #d9dce4;border-radius:12px;font-size:1rem;width:100%}
+.pw{position:relative;display:flex}
+.pw input{padding-right:44px!important}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;background:none;font-size:1rem;opacity:.55;border-radius:8px}
+.pw-eye:hover{opacity:1;background:#eef1f8}
+.f select{padding:10px 12px;border:1.5px solid #dfe2ea;border-radius:10px;background:#fff;font-size:.92rem;width:100%;font-weight:400}
+.adm-user{display:flex;align-items:center;gap:10px;margin-left:auto;margin-right:6px}
+.adm-user b{display:block;font-size:.85rem;line-height:1.1}
+.adm-user small{font-size:.72rem;color:#6b7180}
+.av{width:36px;height:36px;flex:0 0 36px;border-radius:50%;display:grid;place-items:center;background:var(--primary);color:#fff;font-weight:800;font-size:.8rem}
+.user-row{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.user-info{flex:1;min-width:0;display:flex;flex-direction:column}
+.user-info small{color:#6b7180;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.role{font-size:.72rem;font-weight:800;padding:4px 10px;border-radius:99px;background:#eef1f8;color:#4b5161;white-space:nowrap}
+.role.admin{background:color-mix(in srgb,var(--primary) 14%,#fff);color:var(--primary)}
+.users{margin-bottom:14px}
+.user-form{margin-top:4px}
+@media (max-width:640px){.adm-user span:not(.av){display:none}.user-row .role{display:none}}

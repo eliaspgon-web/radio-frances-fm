@@ -3,7 +3,7 @@
 require __DIR__ . '/fontes.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') responder(['erro' => 'Método não permitido'], 405);
 $b = corpoJson();
-if (!senhaOk($b['senha'] ?? null)) responder(['erro' => 'Senha inválida'], 401);
+exigir('admin');
 $s = lerSegredos();
 $acao = $b['acao'] ?? 'status';
 if ($acao === 'salvar') {

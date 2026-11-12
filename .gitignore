@@ -5,3 +5,7 @@ data/cache-*.json
 data/config.backup.json
 uploads/*
 !uploads/.htaccess
+
+data/usuarios.php
+data/sessoes.php
+data/tentativas.json

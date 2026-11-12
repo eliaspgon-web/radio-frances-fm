@@ -7,7 +7,8 @@ App web instalável (PWA) para iPhone e Android, com o visual do francesfm.com.b
 - **VEJA** — verifica se o canal do YouTube está **ao vivo** e abre a transmissão dentro do app (pausa a rádio).
 - **Notícias** — carrossel com os **5 últimos posts do Instagram**, feeds **RSS** de sites, ou os dois juntos.
 - **WhatsApp** — Peça sua música, Mande seu alô, Comercial, Promocional e Jornalismo.
-- **Painel gerencial** (⚙ no menu, senha inicial `frances2026`) — rádios/streams/logos, notícias e Instagram, WhatsApp, cores/paletas, fundo, senha.
+- **Painel gerencial** (⚙ no topo ou no menu ☰) — rádios/streams/logos, notícias e Instagram, WhatsApp, cores/paletas, fundo.
+- **Usuários e senhas** — login por usuário; níveis **Administrador** (tudo, inclusive usuários e Instagram) e **Editor** (conteúdo); cada um troca a própria senha; bloqueio de 15 min após 5 tentativas erradas; sessão de 12 h.
 
 ## Arquivos
 | Arquivo | Para quê |
@@ -23,7 +24,8 @@ App web instalável (PWA) para iPhone e Android, com o visual do francesfm.com.b
 ## Publicar (precisa de PHP 7.4+ e HTTPS)
 1. Envie a pasta para uma hospedagem com PHP (ex.: o próprio servidor do francesfm.com.br em `/app`, Hostinger, Locaweb, cPanel).
 2. Permissão de escrita em `data/` e `uploads/`.
-3. Abra o endereço, menu ☰ → **Painel gerencial**, entre com `frances2026` e **troque a senha**.
+3. Abra o endereço, clique em ⚙ (ou menu ☰ → **Painel gerencial**) e entre com usuário **`admin`** e senha **`frances2026`**.
+   Vá em **🔒 Minha senha** e troque a senha. Em **👥 Usuários**, crie um login para cada pessoa da equipe.
 4. Em **Notícias → Instagram**, cole o token da API oficial do Instagram (conta Profissional) e clique em *Testar conexão*.
 5. Em **WhatsApp**, cadastre os números.
 

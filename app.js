@@ -13,7 +13,10 @@
   const API = "api/";
 
   let config = null;
-  let senhaAdmin = "";
+  let sessao = null; // { token, usuario, nome, papel, papelNome }
+  const LS_SES = "radioapp.sessao";
+  const ehAdmin = () => !!sessao && sessao.papel === "admin";
+  const authH = (extra) => Object.assign({ "X-Admin-Token": sessao ? sessao.token : "" }, extra || {});
   let atual = null;
   const audio = new Audio();
   audio.preload = "none";
@@ -402,43 +405,77 @@
   let rascunho = null;
   let aba = "radios";
 
-  function abrirAdmin() {
+  async function abrirAdmin() {
     let ov = $("#ra-admin");
     if (!ov) { ov = document.createElement("div"); ov.id = "ra-admin"; document.body.appendChild(ov); }
     ov.className = "open";
-    if (!senhaAdmin) return telaLogin(ov);
+    if (!sessao) { try { sessao = JSON.parse(sessionStorage.getItem(LS_SES) || "null"); } catch (e) { sessao = null; } }
+    if (sessao && !PREVIEW) {   // confere se a sessão ainda vale
+      try { const r = await fetch(API + "auth.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify({ acao: "eu" }) }); if (r.ok) Object.assign(sessao, (await r.json()).usuario); else sessao = null; } catch (e) {}
+    }
+    if (!sessao) return telaLogin(ov);
     rascunho = clone(config);
     telaPainel(ov);
   }
   function fecharAdmin() { const ov = $("#ra-admin"); if (ov) ov.className = ""; }
+  function guardarSessao() { try { sessao ? sessionStorage.setItem(LS_SES, JSON.stringify(sessao)) : sessionStorage.removeItem(LS_SES); } catch (e) {} }
+  function sessaoExpirou() { sessao = null; guardarSessao(); toast("Sua sessão expirou. Entre novamente.", "err"); telaLogin($("#ra-admin")); }
 
-  function telaLogin(ov) {
+  function telaLogin(ov, msg = "") {
     ov.innerHTML = `
       <div class="adm-login">
         <button class="adm-x" data-close aria-label="Fechar">×</button>
         <div class="adm-lock">⚙</div>
         <h2>Painel gerencial</h2>
-        <p>${PREVIEW ? "Prévia: use a senha <b>frances2026</b>. As alterações ficam salvas neste navegador." : "Digite a senha de administrador."}</p>
-        <form id="adm-form"><input type="password" id="adm-senha" placeholder="Senha" autocomplete="current-password" required><button class="btn primary">Entrar</button></form>
-        <small id="adm-err"></small>
+        <p>${PREVIEW ? "Prévia: usuário <b>admin</b> e senha <b>frances2026</b>. As alterações ficam salvas só neste navegador." : "Entre com seu usuário e senha."}</p>
+        <form id="adm-form" class="adm-login-form" autocomplete="on">
+          <label class="f"><span>Usuário</span><input id="adm-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+          <label class="f"><span>Senha</span><span class="pw"><input type="password" id="adm-senha" name="password" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="Mostrar senha">👁</button></span></label>
+          <button class="btn primary">Entrar</button>
+        </form>
+        <small id="adm-err">${esc(msg)}</small>
       </div>`;
     $("[data-close]", ov).onclick = fecharAdmin;
-    $("#adm-senha", ov).focus();
+    olhinho(ov);
+    $("#adm-user", ov).focus();
     $("#adm-form", ov).onsubmit = async (e) => {
       e.preventDefault();
-      const s = $("#adm-senha", ov).value;
-      const ok = await validarSenha(s);
-      if (!ok) { $("#adm-err", ov).textContent = "Senha incorreta."; return; }
-      senhaAdmin = s; rascunho = clone(config); telaPainel(ov);
+      const btn = $("#adm-form button.primary", ov); btn.disabled = true; btn.textContent = "Entrando…";
+      const r = await entrar($("#adm-user", ov).value.trim().toLowerCase(), $("#adm-senha", ov).value);
+      btn.disabled = false; btn.textContent = "Entrar";
+      if (r.erro) { $("#adm-err", ov).textContent = r.erro; $("#adm-senha", ov).select(); return; }
+      sessao = r; guardarSessao(); rascunho = clone(config); aba = "radios"; telaPainel(ov);
+      toast(`Olá, ${sessao.nome}!`, "ok");
     };
   }
+  function olhinho(root) { $$(".pw-eye", root).forEach((b) => (b.onclick = () => { const i = b.previousElementSibling; i.type = i.type === "password" ? "text" : "password"; })); }
 
-  async function validarSenha(s) {
-    if (PREVIEW) return s === "frances2026";
+  async function entrar(usuario, senha) {
+    if (PREVIEW) {
+      const u = (await usuariosPrevia()).find((x) => x.usuario === usuario);
+      if (!u || u.hash !== (await sha(senha))) return { erro: "Usuário ou senha incorretos." };
+      return { token: "previa", usuario: u.usuario, nome: u.nome, papel: u.papel, papelNome: PAPEIS[u.papel] };
+    }
     try {
-      const r = await fetch(API + "auth.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ senha: s }) });
-      return r.ok;
-    } catch (e) { return false; }
+      const r = await fetch(API + "auth.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "login", usuario, senha }) });
+      const j = await r.json();
+      if (!r.ok) return { erro: j.erro || "Não foi possível entrar." };
+      return Object.assign({ token: j.token }, j.usuario);
+    } catch (e) { return { erro: "Servidor indisponível." }; }
+  }
+  async function sair() {
+    if (!PREVIEW && sessao) { try { await fetch(API + "auth.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify({ acao: "sair" }) }); } catch (e) {} }
+    sessao = null; guardarSessao(); telaLogin($("#ra-admin")); toast("Você saiu do painel.");
+  }
+
+  // ---- usuários na prévia (sem servidor): ficam neste navegador, com senha em hash ----
+  const PAPEIS = { admin: "Administrador", editor: "Editor" };
+  const LS_USERS = "radioapp.usuarios.previa";
+  async function sha(t) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join(""); }
+  async function usuariosPrevia() {
+    try { const l = JSON.parse(lsGet(LS_USERS) || "null"); if (Array.isArray(l) && l.length) return l; } catch (e) {}
+    const l = [{ usuario: "admin", nome: "Administrador", papel: "admin", hash: await sha("frances2026"), ultimoAcesso: null }];
+    lsSet(LS_USERS, JSON.stringify(l)); return l;
   }
 
   function telaPainel(ov) {
@@ -446,6 +483,7 @@
       <div class="adm">
         <header class="adm-top">
           <div><strong>Painel gerencial</strong><small>${esc(rascunho.site.nome || "")}</small></div>
+          <div class="adm-user" title="${esc(sessao.usuario)}"><span class="av">${esc(iniciais(sessao.nome))}</span><span><b>${esc(sessao.nome)}</b><small>${esc(sessao.papelNome || PAPEIS[sessao.papel] || "")}</small></span><button class="btn ghost sm" data-act="sair">Sair</button></div>
           <div class="adm-actions">
             <button class="btn ghost" data-act="export">Exportar</button>
             <button class="btn ghost" data-act="import">Importar</button>
@@ -454,7 +492,7 @@
           </div>
         </header>
         <nav class="adm-tabs">
-          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["aparencia", "🎨 Aparência"], ["seguranca", "🔒 Senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
+          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["aparencia", "🎨 Aparência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
         </nav>
         <section class="adm-body"></section>
       </div>`;
@@ -463,7 +501,9 @@
     $("[data-act=save]", ov).onclick = salvar;
     $("[data-act=export]", ov).onclick = exportar;
     $("[data-act=import]", ov).onclick = importar;
-    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, aparencia: abaAparencia, seguranca: abaSeguranca }[aba])($(".adm-body", ov));
+    $("[data-act=sair]", ov).onclick = sair;
+    if (aba === "usuarios" && !ehAdmin()) aba = "radios";
+    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, aparencia: abaAparencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
   }
 
   // ----- aba Contato / WhatsApp -----
@@ -544,7 +584,7 @@
   async function enviarImagem(file) {
     if (file.size > 3 * 1024 * 1024) throw new Error("Imagem muito grande (máx. 3 MB)");
     if (!PREVIEW) {
-      const fd = new FormData(); fd.append("arquivo", file); fd.append("senha", senhaAdmin);
+      const fd = new FormData(); fd.append("arquivo", file); fd.append("token", sessao ? sessao.token : "");
       try {
         const r = await fetch(API + "upload.php", { method: "POST", body: fd });
         const j = await r.json();
@@ -648,7 +688,8 @@
       <div class="pal-grid modos">${MODOS.map(([k, ic, t, d]) => `<button type="button" class="pal-card ${n.modo === k ? "on" : ""}" data-modo="${k}"><span class="modo-ic">${ic}</span><strong>${t}</strong><small>${d}</small></button>`).join("")}</div>
       <p class="hint">Atualização automática a cada 10 minutos. Notícias manuais marcadas como <b>Destaque</b> sempre entram na frente.</p>
 
-      ${usaIG ? `<div class="adm-card ig-box">
+      ${usaIG && !ehAdmin() ? `<p class="hint">📸 A conexão com o Instagram é configurada por um <b>administrador</b>.</p>` : ""}
+      ${usaIG && ehAdmin() ? `<div class="adm-card ig-box">
         <div class="adm-card-top"><span class="drag ig">📸</span><strong>Conexão com o Instagram</strong><span class="ig-status" data-igstatus>${PREVIEW ? "prévia" : "verificando…"}</span></div>
         <p class="hint">Use o <b>token de acesso</b> da API oficial do Instagram (conta Profissional: Comercial ou Criador de conteúdo). O token fica guardado só no servidor e nunca aparece no site.
         <br>• Login com Instagram: deixe o ID em branco. • Login pelo Facebook (Graph API): informe o ID numérico da conta do Instagram.</p>
@@ -705,9 +746,9 @@
     });
     // Instagram
     const il = $("[data-iglink]", body); if (il) il.oninput = () => (rascunho.site.instagram = il.value.trim());
-    if (usaIG && !PREVIEW) {
+    if (usaIG && ehAdmin() && !PREVIEW) {
       const st = $("[data-igstatus]", body), out = $("[data-igout]", body);
-      const api = async (dados) => { const r = await fetch(API + "segredos.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ senha: senhaAdmin }, dados)) }); return r.json(); };
+      const api = async (dados) => { const r = await fetch(API + "segredos.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify(dados) }); if (r.status === 401) sessaoExpirou(); return r.json(); };
       const pintar = (j) => { st.textContent = j.token ? "● conectado" : "○ sem token"; st.className = "ig-status " + (j.token ? "ok" : ""); if (j.user_id !== undefined) $("[data-igid]", body).value = j.user_id || ""; };
       api({ acao: "status" }).then(pintar).catch(() => (st.textContent = "servidor indisponível"));
       $("[data-igsave]", body).onclick = async () => { const j = await api({ acao: "salvar", instagram_token: $("[data-igtoken]", body).value.trim(), instagram_user_id: $("[data-igid]", body).value.trim() }); pintar(j); $("[data-igtoken]", body).value = ""; toast("Token salvo no servidor", "ok"); };
@@ -753,24 +794,126 @@
     ligarImagens(body);
   }
 
-  // ----- aba Senha -----
-  function abaSeguranca(body) {
+  // ----- aba Usuários (só administradores) -----
+  async function apiUsuarios(dados) {
+    if (PREVIEW) {
+      let l = await usuariosPrevia();
+      if (dados.acao === "salvar") {
+        const login = String(dados.usuario || "").trim().toLowerCase();
+        if (!/^[a-z0-9._-]{3,30}$/.test(login)) return { erro: "Usuário inválido: use 3 a 30 letras minúsculas, números, ponto, hífen ou _." };
+        const ex = l.find((u) => u.usuario === login);
+        if (dados.novo && ex) return { erro: "Já existe um usuário com esse nome." };
+        if (dados.novo && (dados.senha || "").length < 8) return { erro: "Defina uma senha com pelo menos 8 caracteres." };
+        if (dados.senha && dados.senha.length < 8) return { erro: "A senha precisa ter pelo menos 8 caracteres." };
+        const u = ex || { usuario: login, ultimoAcesso: null };
+        u.nome = (dados.nome || login).slice(0, 60); u.papel = dados.papel;
+        if (dados.senha) u.hash = await sha(dados.senha);
+        if (!ex) l.push(u);
+        if (!l.some((x) => x.papel === "admin")) return { erro: "É preciso manter pelo menos um administrador." };
+      }
+      if (dados.acao === "excluir") {
+        if (dados.usuario === sessao.usuario) return { erro: "Você não pode excluir o próprio usuário." };
+        l = l.filter((u) => u.usuario !== dados.usuario);
+        if (!l.some((x) => x.papel === "admin")) return { erro: "É preciso manter pelo menos um administrador." };
+      }
+      lsSet(LS_USERS, JSON.stringify(l));
+      return { usuarios: l.map((u) => ({ usuario: u.usuario, nome: u.nome, papel: u.papel, papelNome: PAPEIS[u.papel], ultimoAcesso: u.ultimoAcesso })), papeis: PAPEIS };
+    }
+    try {
+      const r = await fetch(API + "usuarios.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify(dados) });
+      if (r.status === 401) { sessaoExpirou(); return { erro: "Sessão expirada." }; }
+      const j = await r.json(); return r.ok ? j : { erro: j.erro || "Erro" };
+    } catch (e) { return { erro: "Servidor indisponível." }; }
+  }
+
+  async function abaUsuarios(body, editar = null) {
+    body.innerHTML = `<p class="hint">Carregando usuários…</p>`;
+    const j = await apiUsuarios({ acao: "listar" });
+    if (j.erro) { body.innerHTML = `<p class="hint">${esc(j.erro)}</p>`; return; }
+    const fmt = (d) => d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "nunca entrou";
+    const form = (u) => `
+      <form class="adm-card user-form" data-form>
+        <div class="adm-card-top"><span class="drag">${u ? "✎" : "+"}</span><strong>${u ? "Editar " + esc(u.nome) : "Novo usuário"}</strong></div>
+        <div class="grid">
+          <label class="f"><span>Nome</span><input name="nome" value="${esc(u ? u.nome : "")}" placeholder="Ex.: Maria Souza" required maxlength="60"></label>
+          <label class="f"><span>Usuário (login)</span><input name="usuario" value="${esc(u ? u.usuario : "")}" ${u ? "readonly" : ""} placeholder="ex.: maria" autocapitalize="none" spellcheck="false" pattern="[a-z0-9._\-]{3,30}" required></label>
+          <label class="f"><span>Nível de acesso</span><select name="papel">${Object.entries(PAPEIS).map(([k, v]) => `<option value="${k}" ${u && u.papel === k ? "selected" : !u && k === "editor" ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+          <label class="f"><span>${u ? "Nova senha (deixe vazio para manter)" : "Senha"}</span><span class="pw"><input type="password" name="senha" minlength="8" autocomplete="new-password" ${u ? "" : "required"} placeholder="mínimo 8 caracteres"><button type="button" class="pw-eye" aria-label="Mostrar senha">👁</button></span></label>
+        </div>
+        <p class="hint" style="margin:10px 0 0"><b>Administrador:</b> tudo, inclusive usuários e conexão do Instagram. <b>Editor:</b> rádios, notícias, WhatsApp e aparência.</p>
+        <div class="adm-actions" style="margin-top:10px"><button class="btn primary sm">${u ? "Salvar usuário" : "Criar usuário"}</button>${u ? `<button type="button" class="btn ghost sm" data-cancel>Cancelar</button>` : ""}</div>
+        <small class="test-out" data-out></small>
+      </form>`;
     body.innerHTML = `
-      <div class="adm-head"><h3>Alterar senha do painel</h3></div>
-      ${PREVIEW ? `<p class="hint">Na prévia a senha é fixa (frances2026). Com o app hospedado, a troca vale para todos os acessos.</p>` : ""}
-      <form class="adm-card" id="f-senha"><div class="grid">
-        <label class="f"><span>Nova senha</span><input type="password" id="s1" minlength="6" required></label>
-        <label class="f"><span>Repita a nova senha</span><input type="password" id="s2" minlength="6" required></label>
-      </div><button class="btn primary" ${PREVIEW ? "disabled" : ""}>Trocar senha</button></form>`;
+      <div class="adm-head"><h3>Usuários do painel</h3><small style="color:#6b7180">${j.usuarios.length} cadastrado(s)</small></div>
+      <div class="adm-list users">
+        ${j.usuarios.map((u) => `
+          <article class="adm-card user-row" data-u="${esc(u.usuario)}">
+            <span class="av">${esc(iniciais(u.nome))}</span>
+            <div class="user-info"><strong>${esc(u.nome)} ${u.usuario === sessao.usuario ? `<em class="tag">você</em>` : ""}</strong><small>@${esc(u.usuario)} · último acesso: ${esc(fmt(u.ultimoAcesso))}</small></div>
+            <span class="role ${u.papel}">${esc(u.papelNome || PAPEIS[u.papel])}</span>
+            <button class="icon" data-edit title="Editar">✎</button>
+            <button class="icon danger" data-del title="Excluir" ${u.usuario === sessao.usuario ? "disabled" : ""}>🗑</button>
+          </article>`).join("")}
+      </div>
+      ${form(editar ? j.usuarios.find((u) => u.usuario === editar) : null)}`;
+    olhinho(body);
+    $$("[data-edit]", body).forEach((b) => (b.onclick = () => abaUsuarios(body, b.closest("[data-u]").dataset.u)));
+    $$("[data-del]", body).forEach((b) => (b.onclick = async () => {
+      const row = b.closest("[data-u]");
+      if (!row.dataset.confirm) { row.dataset.confirm = 1; toast("Clique na lixeira de novo para excluir @" + row.dataset.u); setTimeout(() => delete row.dataset.confirm, 3000); return; }
+      const r = await apiUsuarios({ acao: "excluir", usuario: row.dataset.u });
+      if (r.erro) return toast(r.erro, "err");
+      toast("Usuário excluído", "ok"); abaUsuarios(body);
+    }));
+    const c = $("[data-cancel]", body); if (c) c.onclick = () => abaUsuarios(body);
+    $("[data-form]", body).onsubmit = async (e) => {
+      e.preventDefault();
+      const f = e.target, out = $("[data-out]", f);
+      const dados = { acao: "salvar", novo: !editar, nome: f.nome.value.trim(), usuario: f.usuario.value.trim().toLowerCase(), papel: f.papel.value, senha: f.senha.value };
+      if (editar === sessao.usuario && dados.papel !== "admin") { out.textContent = "Você não pode tirar o seu próprio acesso de administrador."; out.className = "test-out err"; return; }
+      const r = await apiUsuarios(dados);
+      if (r.erro) { out.textContent = r.erro; out.className = "test-out err"; return; }
+      toast(editar ? "Usuário atualizado" : `Usuário @${dados.usuario} criado`, "ok");
+      if (editar === sessao.usuario) { sessao.nome = dados.nome; guardarSessao(); }
+      abaUsuarios(body);
+    };
+  }
+
+  // ----- aba Minha senha -----
+  function abaConta(body) {
+    body.innerHTML = `
+      <div class="adm-head"><h3>Minha conta</h3></div>
+      <div class="adm-card user-row me"><span class="av">${esc(iniciais(sessao.nome))}</span><div class="user-info"><strong>${esc(sessao.nome)}</strong><small>@${esc(sessao.usuario)}</small></div><span class="role ${sessao.papel}">${esc(sessao.papelNome || PAPEIS[sessao.papel])}</span></div>
+      <form class="adm-card" id="f-senha" style="margin-top:12px">
+        <div class="adm-card-top"><span class="drag">🔒</span><strong>Trocar minha senha</strong></div>
+        <div class="grid">
+          <label class="f"><span>Senha atual</span><span class="pw"><input type="password" id="s0" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="Mostrar senha">👁</button></span></label>
+          <label class="f"><span>Nova senha</span><span class="pw"><input type="password" id="s1" minlength="8" autocomplete="new-password" required placeholder="mínimo 8 caracteres"><button type="button" class="pw-eye" aria-label="Mostrar senha">👁</button></span></label>
+          <label class="f"><span>Repita a nova senha</span><span class="pw"><input type="password" id="s2" minlength="8" autocomplete="new-password" required><button type="button" class="pw-eye" aria-label="Mostrar senha">👁</button></span></label>
+        </div>
+        <div class="adm-actions" style="margin-top:10px"><button class="btn primary">Trocar senha</button></div>
+        <small class="test-out" data-out></small>
+      </form>`;
+    olhinho(body);
     $("#f-senha", body).onsubmit = async (e) => {
       e.preventDefault();
-      const a = $("#s1", body).value, b = $("#s2", body).value;
-      if (a !== b) return toast("As senhas não conferem", "err");
-      try {
-        const r = await fetch(API + "auth.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ senha: senhaAdmin, nova: a }) });
-        if (!r.ok) throw 0;
-        senhaAdmin = a; toast("Senha alterada", "ok"); e.target.reset();
-      } catch (er) { toast("Não foi possível trocar a senha", "err"); }
+      const out = $("[data-out]", body), atual = $("#s0", body).value, a = $("#s1", body).value, b = $("#s2", body).value;
+      const erro = (m) => { out.textContent = m; out.className = "test-out err"; };
+      if (a !== b) return erro("As novas senhas não conferem.");
+      if (a.length < 8) return erro("A nova senha precisa ter pelo menos 8 caracteres.");
+      if (PREVIEW) {
+        const l = await usuariosPrevia(), u = l.find((x) => x.usuario === sessao.usuario);
+        if (!u || u.hash !== (await sha(atual))) return erro("Senha atual incorreta.");
+        u.hash = await sha(a); lsSet(LS_USERS, JSON.stringify(l));
+      } else {
+        try {
+          const r = await fetch(API + "auth.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify({ acao: "trocarSenha", atual, nova: a }) });
+          if (r.status === 401) return sessaoExpirou();
+          const j = await r.json(); if (!r.ok) return erro(j.erro || "Não foi possível trocar a senha.");
+        } catch (er) { return erro("Servidor indisponível."); }
+      }
+      e.target.reset(); out.textContent = "✓ Senha alterada."; out.className = "test-out ok"; toast("Senha alterada", "ok");
     };
   }
 
@@ -782,7 +925,8 @@
       aplicarNovaConfig(); toast("Salvo neste navegador (prévia)", "ok"); return;
     }
     try {
-      const r = await fetch(API + "config.php", { method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Senha": senhaAdmin }, body: JSON.stringify(rascunho) });
+      const r = await fetch(API + "config.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify(rascunho) });
+      if (r.status === 401) return sessaoExpirou();
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || "Erro ao salvar");
       aplicarNovaConfig(); toast("Alterações publicadas para todos os ouvintes", "ok");
     } catch (e) { toast(e.message + ". Use Exportar para baixar o config.json.", "err"); }
