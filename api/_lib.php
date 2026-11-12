@@ -1,6 +1,7 @@
 <?php
 // Funções comuns da API
 declare(strict_types=1);
+date_default_timezone_set('America/Maceio');
 header('X-Content-Type-Options: nosniff');
 
 const DATA_DIR    = __DIR__ . '/../data';

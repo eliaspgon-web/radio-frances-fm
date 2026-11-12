@@ -68,3 +68,23 @@ function itensRss(string $url, int $max = 15): array {
     }
     return $out;
 }
+
+/** Imagem de capa da matéria (og:image / twitter:image), com cache de 30 min por link. */
+function ogImagem(string $link): string {
+    if (!preg_match('#^https?://#i', $link)) return '';
+    $k = 'og-' . md5($link);
+    if (($c = cacheLer($k, 1800)) !== null) return (string)($c['img'] ?? '');
+    $html = baixar($link, 6);
+    $img = '';
+    if ($html) {
+        $cab = substr($html, 0, 200000);
+        foreach (['og:image', 'twitter:image'] as $p) {
+            if (preg_match('#<meta[^>]+(?:property|name)=["\']' . $p . '["\'][^>]+content=["\']([^"\']+)#i', $cab, $m)
+             || preg_match('#<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']' . $p . '["\']#i', $cab, $m)) {
+                $img = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8'); break;
+            }
+        }
+    }
+    cacheSalvar($k, ['img' => $img]);
+    return $img;
+}

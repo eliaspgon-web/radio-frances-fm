@@ -1,150 +1,96 @@
 {
-    "site": {
-        "nome": "Rede Francês FM",
-        "slogan": "A voz do Rancho do Maia",
-        "logo": "assets/site/logo_frances_fm.svg",
-        "corPrimaria": "#e6231d",
-        "corDestaque": "#ff632a",
-        "instagram": "https://www.instagram.com/redefrancesfm/",
-        "youtube": "https://www.youtube.com/channel/UCJhb-ezfHb2POTunV93JloQ",
-        "facebook": "https://www.facebook.com/francesfm99/",
-        "paleta": "frances",
-        "corSol": "#fcb91d",
-        "corEscura": "#000000",
-        "corAreia": "#13110f",
-        "portal": "https://francesnews.com.br",
-        "fundo": "https://francesfm.com.br/assets/images/1.png",
-        "tocandoBase": "https://francesfm.com.br/playing/"
+  "site": {
+    "nome": "Rede Francês FM",
+    "slogan": "A voz do Rancho do Maia",
+    "logo": "assets/site/logo_frances_fm.svg",
+    "corPrimaria": "#e6231d",
+    "corDestaque": "#ff632a",
+    "instagram": "https://www.instagram.com/redefrancesfm/",
+    "youtube": "https://www.youtube.com/channel/UCJhb-ezfHb2POTunV93JloQ",
+    "facebook": "https://www.facebook.com/francesfm99/",
+    "paleta": "frances",
+    "corSol": "#fcb91d",
+    "corEscura": "#000000",
+    "corAreia": "#13110f",
+    "portal": "https://francesnews.com.br",
+    "fundo": "https://francesfm.com.br/assets/images/1.png",
+    "tocandoBase": "https://francesfm.com.br/playing/"
+  },
+  "radios": [
+    {
+      "id": "maceio",
+      "nome": "Francês FM Maceió",
+      "cidade": "Maceió - AL",
+      "frequencia": "106.1 FM",
+      "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_MACAAC.aac",
+      "logo": "assets/site/icone.svg",
+      "ativo": true
     },
-    "radios": [
-        {
-            "id": "maceio",
-            "nome": "Francês FM Maceió",
-            "cidade": "Maceió - AL",
-            "frequencia": "106.1 FM",
-            "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_MACAAC.aac",
-            "logo": "assets/site/icone.svg",
-            "ativo": true
-        },
-        {
-            "id": "caruaru",
-            "nome": "Francês FM Caruaru",
-            "cidade": "Caruaru - PE",
-            "frequencia": "105.5 FM",
-            "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_CARAAC.aac",
-            "logo": "assets/site/icone.svg",
-            "ativo": true
-        }
-    ],
-    "contato": [
-        {
-            "id": "musica",
-            "tipo": "Peça sua música",
-            "icone": "🎵",
-            "numero": "",
-            "descricao": "Peça pelo WhatsApp",
-            "mensagem": "Olá, {radio}! Quero pedir uma música: ",
-            "ativo": true,
-            "atalho": true
-        },
-        {
-            "id": "alo",
-            "tipo": "Mande seu alô",
-            "icone": "📣",
-            "numero": "",
-            "descricao": "Recado no ar",
-            "mensagem": "Olá, {radio}! Quero mandar um alô para: ",
-            "ativo": true,
-            "atalho": true
-        },
-        {
-            "id": "comercial",
-            "tipo": "Comercial",
-            "numero": "",
-            "descricao": "Anuncie na rádio",
-            "mensagem": "Olá! Vim pelo app da {radio} e quero informações comerciais para anunciar.",
-            "ativo": true,
-            "atalho": false
-        },
-        {
-            "id": "promocional",
-            "tipo": "Promocional",
-            "numero": "",
-            "descricao": "Promoções e sorteios",
-            "mensagem": "Olá! Estou ouvindo a {radio} e quero participar das promoções.",
-            "ativo": true,
-            "atalho": false
-        },
-        {
-            "id": "jornalismo",
-            "tipo": "Jornalismo",
-            "numero": "",
-            "descricao": "Envie sua pauta ou denúncia",
-            "mensagem": "Olá, jornalismo da {radio}! Tenho uma pauta/informação para enviar.",
-            "ativo": true,
-            "atalho": false
-        }
-    ],
-    "noticias": {
-        "limite": 5,
-        "feeds": [],
-        "manuais": [
-            {
-                "id": "n1",
-                "titulo": "Exemplo — os 5 últimos posts do Instagram aparecem aqui",
-                "resumo": "Conecte o Instagram no painel (Notícias → Instagram) para trocar estes exemplos.",
-                "imagem": "",
-                "link": "https://www.instagram.com/redefrancesfm/",
-                "categoria": "",
-                "fonte": "Instagram",
-                "data": "2026-11-12",
-                "destaque": false
-            },
-            {
-                "id": "n2",
-                "titulo": "Exemplo — a legenda vira o título do card",
-                "resumo": "A primeira frase do post é usada como título; a imagem do post vira a capa.",
-                "imagem": "",
-                "link": "https://www.instagram.com/redefrancesfm/",
-                "categoria": "",
-                "fonte": "Instagram",
-                "data": "2026-11-11",
-                "destaque": false
-            },
-            {
-                "id": "n3",
-                "titulo": "Exemplo — vídeos e Reels também entram",
-                "resumo": "Para vídeos, a capa do Reel é usada e o card ganha o ícone ▶.",
-                "imagem": "",
-                "link": "https://www.instagram.com/redefrancesfm/",
-                "categoria": "",
-                "fonte": "Instagram",
-                "data": "2026-11-10",
-                "destaque": false
-            },
-            {
-                "id": "n4",
-                "titulo": "Exemplo — dá para somar sites por RSS",
-                "resumo": "Escolha “Instagram + Sites” e cole o RSS do portal de notícias.",
-                "imagem": "",
-                "link": "https://www.instagram.com/redefrancesfm/",
-                "categoria": "",
-                "fonte": "Instagram",
-                "data": "2026-11-09",
-                "destaque": false
-            },
-            {
-                "id": "n5",
-                "titulo": "Exemplo — toque no card para abrir o post",
-                "resumo": "O link leva direto para a publicação no Instagram.",
-                "imagem": "",
-                "link": "https://www.instagram.com/redefrancesfm/",
-                "categoria": "",
-                "fonte": "Instagram",
-                "data": "2026-11-08",
-                "destaque": false
-            }
-        ],
-        "modo": "instagram"
+    {
+      "id": "caruaru",
+      "nome": "Francês FM Caruaru",
+      "cidade": "Caruaru - PE",
+      "frequencia": "105.5 FM",
+      "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_CARAAC.aac",
+      "logo": "assets/site/icone.svg",
+      "ativo": true
     }
+  ],
+  "contato": [
+    {
+      "id": "musica",
+      "tipo": "Peça sua música",
+      "icone": "🎵",
+      "numero": "",
+      "descricao": "Peça pelo WhatsApp",
+      "mensagem": "Olá, {radio}! Quero pedir uma música: ",
+      "ativo": true,
+      "atalho": true
+    },
+    {
+      "id": "alo",
+      "tipo": "Mande seu alô",
+      "icone": "📣",
+      "numero": "",
+      "descricao": "Recado no ar",
+      "mensagem": "Olá, {radio}! Quero mandar um alô para: ",
+      "ativo": true,
+      "atalho": true
+    },
+    {
+      "id": "comercial",
+      "tipo": "Comercial",
+      "numero": "",
+      "descricao": "Anuncie na rádio",
+      "mensagem": "Olá! Vim pelo app da {radio} e quero informações comerciais para anunciar.",
+      "ativo": true,
+      "atalho": false
+    },
+    {
+      "id": "promocional",
+      "tipo": "Promocional",
+      "numero": "",
+      "descricao": "Promoções e sorteios",
+      "mensagem": "Olá! Estou ouvindo a {radio} e quero participar das promoções.",
+      "ativo": true,
+      "atalho": false
+    },
+    {
+      "id": "jornalismo",
+      "tipo": "Jornalismo",
+      "numero": "",
+      "descricao": "Envie sua pauta ou denúncia",
+      "mensagem": "Olá, jornalismo da {radio}! Tenho uma pauta/informação para enviar.",
+      "ativo": true,
+      "atalho": false
+    }
+  ],
+  "noticias": {
+    "limite": 5,
+    "feeds": [
+      "https://francesnews.com.br/feed"
+    ],
+    "manuais": [],
+    "modo": "rss"
+  }
 }

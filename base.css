@@ -45,7 +45,7 @@ input[type=range][data-np=vol]{accent-color:var(--accent)}
 [data-news]:hover .nc-nav{opacity:1}
 .nc-nav.prev{left:10px}.nc-nav.next{right:10px}
 .nc-dots{display:flex;gap:6px;justify-content:center;margin-top:12px}
-.nc-dots button{width:8px;height:8px;border-radius:99px;border:0;padding:0;background:currentColor;opacity:.25;transition:.3s}
+.nc-dots button{width:8px;height:8px;border-radius:99px;border:0;padding:0;color:inherit;background:currentColor;opacity:.25;transition:.3s}
 .nc-dots button.on{width:26px;opacity:1;background:var(--accent)}
 @media (hover:none){.nc-nav{display:none}}
 
@@ -219,3 +219,6 @@ body[data-player=playing] .station.active .station-eq{display:inline-flex}
 .users{margin-bottom:14px}
 .user-form{margin-top:4px}
 @media (max-width:640px){.adm-user span:not(.av){display:none}.user-row .role{display:none}}
+.rm-links{display:flex;flex-direction:column;gap:8px}
+.rm-links .btn{text-decoration:none;padding:13px 16px;font-size:.95rem}
+.sec-h h2 .ic-news{background:var(--accent)!important}

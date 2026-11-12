@@ -142,7 +142,7 @@
     atualizarTocando();
     audio.pause();
     if (!r.stream) { setEstado("error", "Endereço de streaming não cadastrado"); return; }
-    if (PREVIEW) { setEstado("error", "Prévia: o áudio toca quando o app estiver hospedado"); return; }
+    if (PREVIEW) { setEstado("paused", "Prévia do layout"); if (tocarJa) ouvirNaPrevia(r); return; }
     audio.src = r.stream;
     if (tocarJa) tocar(); else setEstado("paused", "Pronto para tocar");
     mediaSession();
@@ -150,7 +150,8 @@
 
   function tocar() {
     if (!atual) { const p = radiosAtivas()[0]; if (p) selecionar(p, true); return; }
-    if (PREVIEW || !atual.stream) { selecionar(atual, false); return; }
+    if (PREVIEW) { ouvirNaPrevia(atual); return; }
+    if (!atual.stream) { selecionar(atual, false); return; }
     // reconecta ao vivo (evita tocar áudio "atrasado" do buffer)
     audio.src = atual.stream;
     setEstado("loading", "Conectando…");
@@ -216,6 +217,15 @@
   }
   setInterval(() => { if (!document.hidden) atualizarTocando(); }, 15000);
 
+  // ---------- prévia: o visualizador do claude.ai bloqueia áudio externo ----------
+  // Em vez de um botão que "não faz nada", oferece links reais para ouvir cada rádio.
+  function ouvirNaPrevia(r) {
+    const lista = radiosAtivas().filter((x) => x.stream);
+    modal(`<div class="rm-msg"><span class="rm-ico">📻</span><h3>Ouvir ao vivo</h3>
+      <p>Nesta prévia o navegador bloqueia o áudio. Toque abaixo para ouvir agora em uma nova aba. No app publicado, o som toca aqui mesmo, sem sair da página.</p>
+      <div class="rm-links">${lista.map((x) => `<a class="btn ${r && x.id === r.id ? "primary" : "ghost"}" href="${esc(x.stream)}" target="_blank" rel="noopener">▶ ${esc(x.nome)}${x.frequencia ? " · " + esc(x.frequencia) : ""}</a>`).join("")}</div></div>`);
+  }
+
   // ---------- VEJA: transmissão ao vivo do YouTube ----------
   const urlCanal = () => { const y = (config.site && config.site.youtube) || ""; return /^https?:/i.test(y) ? y.replace(/\/+$/, "") : ""; };
   let estadoVideo = null;
@@ -279,6 +289,7 @@
   async function carregarNoticias() {
     const lim = (config.noticias && config.noticias.limite) || 5;
     const manuais = (config.noticias && config.noticias.manuais) || [];
+    if (PREVIEW && Array.isArray(config.noticias && config.noticias.previa)) return config.noticias.previa.slice(0, lim);
     if (!PREVIEW) {
       try {
         const r = await fetch(API + "noticias.php?t=" + Date.now(), { cache: "no-store" });
@@ -294,7 +305,13 @@
   async function renderNoticias() {
     const itens = await carregarNoticias();
     const modo = (config.noticias && config.noticias.modo) || "instagram";
-    $$("[data-news-title]").forEach((el) => (el.textContent = TITULOS[modo] || "Destaques"));
+    const fonte = itens[0] && itens[0].fonte;
+    $$("[data-news-title]").forEach((el) => (el.textContent = modo === "rss" && fonte ? "Últimas do " + fonte : TITULOS[modo] || "Destaques"));
+    $$(".sec-h h2 .ig, .sec-h h2 .tag-ig").forEach((el) => {      // ícone: Instagram ou jornal
+      const ig = modo === "instagram";
+      el.classList.toggle("ic-news", !ig);
+      if (!ig) el.innerHTML = `<svg viewBox="0 0 24 24"><path fill="#fff" d="M4 4h13v15a1 1 0 0 0 2 0V8h2v11a3 3 0 0 1-3 3H6a2 2 0 0 1-2-2zm3 4v3h7V8zm0 5v2h7v-2zm0 4v2h7v-2z"/></svg>`;
+    });
     $$("[data-news-more]").forEach((el) => { const ig = config.site.instagram; el.href = modo === "instagram" && ig ? ig : (config.site.portal || ig || "#"); });
     $$("[data-news]").forEach((box) => montarCarrossel(box, itens));
   }
