@@ -9,3 +9,4 @@ uploads/*
 data/usuarios.php
 data/sessoes.php
 data/tentativas.json
+__pycache__/
