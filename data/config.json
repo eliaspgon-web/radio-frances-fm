@@ -36,6 +36,36 @@
       "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_CARAAC.aac",
       "logo": "assets/site/icone.svg",
       "ativo": true
+    },
+    {
+      "id": "maceio991",
+      "nome": "Francês FM Maceió 99.1",
+      "cidade": "Maceió - AL",
+      "frequencia": "99.1 FM",
+      "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_CATAAC.aac",
+      "mount": "FRANCESFM_CATAAC",
+      "logo": "assets/site/icone.svg",
+      "ativo": true
+    },
+    {
+      "id": "bonito",
+      "nome": "Francês FM Bonito",
+      "cidade": "Bonito - PE",
+      "frequencia": "98.7 FM",
+      "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_BONAAC.aac",
+      "mount": "FRANCESFM_BONAAC",
+      "logo": "assets/site/icone.svg",
+      "ativo": true
+    },
+    {
+      "id": "rioformoso",
+      "nome": "Francês FM Rio Formoso",
+      "cidade": "Rio Formoso - PE",
+      "frequencia": "90.5 FM",
+      "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_RIOAAC.aac",
+      "mount": "FRANCESFM_RIOAAC",
+      "logo": "assets/site/icone.svg",
+      "ativo": true
     }
   ],
   "contato": [
