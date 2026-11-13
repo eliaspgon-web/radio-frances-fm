@@ -265,7 +265,8 @@
   };
   const limparNp = (t) => String(t || "").replace(/^["'\s]+|["'\s]+$/g, "").split(/(\s+)/).map(consertarPalavra).join("").replace(/\s+/g, " ").trim();
   const norm = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\(.*?\)|\[.*?\]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-  const titleCase = (t) => t.toLowerCase().replace(/(^|\s|\()([a-zà-ú])/g, (m, a, b) => a + b.toUpperCase());
+  // Padrão do RDS: primeira letra de cada palavra maiúscula ("FALTA VOCÊ" / "falta você" → "Falta Você")
+  const titleCase = (t) => String(t || "").toLocaleLowerCase("pt-BR").replace(/(^|[\s(\[\-\/"“&+.,])(\p{L})/gu, (m, a, b) => a + b.toLocaleUpperCase("pt-BR"));
 
   async function metaTriton(mount) {
     const r = await fetch("https://np.tritondigital.com/public/nowplaying?mountName=" + encodeURIComponent(mount) + "&numberToFetch=1&eventType=track", { cache: "no-store" });
@@ -308,6 +309,7 @@
         }
       }
       if (m && m.titulo) m = await enriquecer(m);
+      if (m) m = { ...m, titulo: titleCase(m.titulo), artista: titleCase(m.artista) };
     }
     if (atual !== r) return;                       // trocou de rádio durante a busca
     const chave = m ? m.titulo + "|" + m.artista : "";
