@@ -242,7 +242,16 @@
   // Os nomes vêm em maiúsculas e às vezes com acento quebrado; o catálogo do iTunes corrige a grafia e traz a capa.
   const npCache = {};
   let npChave = "";
-  const limparNp = (t) => String(t || "").replace(/^["'\s]+|["'\s]+$/g, "").replace(/\uFFFDO/g, "ÃO").replace(/\uFFFD/g, "").replace(/\s+/g, " ").trim();
+  // O stream manda acentos em outra codificação: cada letra acentuada vira "\uFFFD". Conserta as palavras mais comuns.
+  const PALAVRAS = ["VOCÊ", "VOCÊS", "NÃO", "SÃO", "MÃE", "MÃO", "MÃOS", "IRMÃO", "CORAÇÃO", "PAIXÃO", "SOLIDÃO", "ILUSÃO", "TRAIÇÃO", "EMOÇÃO", "CANÇÃO", "SERTÃO", "SAFADÃO", "PISEIRO", "ATÉ", "É", "JÁ", "LÁ", "SÓ", "TÁ", "AÍ", "DÁ", "NÓS", "VÓS", "ALÔ", "CAMBORIÚ", "SAÚDE", "MÚSICA", "ÚLTIMA", "ÚNICA", "PRÓXIMA", "SÁBADO", "PÔR", "ESTÁ", "ESTÃO", "VIDA", "FÉ", "BEBÊ", "NENÊ", "CAFÉ", "PORQUÊ", "TAMBÉM", "NINGUÉM", "ALGUÉM", "ALÉM", "PARABÉNS", "MÊS", "TRÊS", "FORRÓ", "XOTE", "MAIARA", "SIMONE", "MARÍLIA", "MENDONÇA", "HENRIQUE", "JULIANO", "ZÉ", "NETO", "CRISTIANO", "JOÃO", "GUSTAVO", "LÉO", "SANTANA", "CALCINHA", "DEVINHO", "VITINHO", "KAUAN", "SÃO", "LOUCO", "MALOKA", "VAQUEIRO", "VAQUEJADA", "CORAÇÕES", "PAIXÕES", "AVIÕES", "MILHÕES", "LIGAÇÃO", "SEPARAÇÃO", "RECAÍDA", "SAUDADE", "BÊBADO", "BÊBADA", "CACHAÇA", "MOÇA", "MOÇO", "PRAÇA", "DANÇA", "DANÇAR", "BALANÇA", "ESPERANÇA", "CONFIANÇA", "LEMBRANÇA", "ABRAÇO", "ABRAÇA", "COMEÇO", "COMEÇAR", "PEÇO", "PREÇO", "CABEÇA", "AGORA"];
+  const consertarPalavra = (w) => {
+    if (!w.includes("\uFFFD")) return w;
+    const re = new RegExp("^" + w.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\uFFFD/g, ".") + "$");
+    const achou = PALAVRAS.find((p) => p.length === w.length && re.test(p));
+    if (achou) return w === w.toUpperCase() ? achou : achou.toLowerCase();
+    return w.replace(/\uFFFD\uFFFDO$/i, "ÇÃO").replace(/\uFFFD\uFFFDES$/i, "ÇÕES").replace(/\uFFFDO(S?)$/i, "ÃO$1").replace(/\uFFFDES$/i, "ÕES").replace(/\uFFFD/g, "");
+  };
+  const limparNp = (t) => String(t || "").replace(/^["'\s]+|["'\s]+$/g, "").split(/(\s+)/).map(consertarPalavra).join("").replace(/\s+/g, " ").trim();
   const norm = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\(.*?\)|\[.*?\]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
   const titleCase = (t) => t.toLowerCase().replace(/(^|\s|\()([a-zà-ú])/g, (m, a, b) => a + b.toUpperCase());
 
