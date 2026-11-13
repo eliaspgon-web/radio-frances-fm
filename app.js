@@ -21,6 +21,23 @@
   let atual = null;
   const audio = new Audio();
   audio.preload = "none";
+  // iPhone/iPad ignoram audio.volume. Lá o volume passa por um controle de ganho (Web Audio),
+  // que precisa do stream com CORS liberado (os streams da StreamTheWorld liberam).
+  const VOL_IOS = (() => { const t = new Audio(); try { t.volume = 0.5; } catch (e) {} return t.volume === 1; })();
+  if (VOL_IOS) audio.crossOrigin = "anonymous";
+  let ctxAudio = null, ganho = null, semCors = false;
+  function ligarGanho() {   // só dentro de um toque do usuário (regra do iOS para áudio)
+    if (ganho) return true;
+    if (semCors || !VOL_IOS) return false;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+      ctxAudio = new AC();
+      ganho = ctxAudio.createGain();
+      ctxAudio.createMediaElementSource(audio).connect(ganho).connect(ctxAudio.destination);
+    } catch (e) { ganho = null; return false; }
+    return true;
+  }
+  const acordarGanho = () => { if (ctxAudio && ctxAudio.state !== "running") ctxAudio.resume().catch(() => {}); };
 
   // ---------- utilidades ----------
   const $ = (s, r = document) => r.querySelector(s);
@@ -180,7 +197,21 @@
 
   audio.addEventListener("playing", () => setEstado("playing", "AO VIVO"));
   audio.addEventListener("waiting", () => setEstado("loading", "Carregando…"));
-  audio.addEventListener("error", () => { if (audio.src) setEstado("error", "Streaming indisponível no momento"); });
+  let testeSemCors = false;
+  audio.addEventListener("error", () => {
+    if (!audio.src) return;
+    if (audio.crossOrigin && !ganho && !testeSemCors) {   // pode ser stream sem CORS: tenta tocar sem ele
+      testeSemCors = true; audio.removeAttribute("crossorigin");
+      audio.src = audio.src; audio.play().catch(() => {}); return;
+    }
+    if (testeSemCors) { testeSemCors = false; if (VOL_IOS && !semCors) audio.crossOrigin = "anonymous"; }   // falha de rede, não de CORS
+    setEstado("error", "Streaming indisponível no momento");
+  });
+  audio.addEventListener("playing", () => {
+    if (testeSemCors) { testeSemCors = false; semCors = true; document.body.classList.add("vol-fixo"); }   // só tocou sem CORS: volume nos botões
+  });
+  audio.addEventListener("play", acordarGanho);
+  document.addEventListener("visibilitychange", acordarGanho);
 
   function mediaSession() {
     if (!("mediaSession" in navigator) || !atual) return;
@@ -210,33 +241,41 @@
     $$("[data-np=next]").forEach((b) => b.addEventListener("click", () => pular(1)));
     $$("[data-np=prev]").forEach((b) => b.addEventListener("click", () => pular(-1)));
     // iPhone/iPad não deixam a página mudar o volume (só os botões do aparelho): detecta e avisa
-    const teste = new Audio(); try { teste.volume = 0.5; } catch (e) {}
-    if (teste.volume === 1) document.body.classList.add("vol-fixo");
+    if (VOL_IOS && !(window.AudioContext || window.webkitAudioContext)) document.body.classList.add("vol-fixo");
     // Barra de volume com curva de áudio (como num aparelho de som): metade da barra ≈ metade do volume que se ouve.
     // O som final = volume do celular × volume da barra. (Páginas web não podem ler/mudar o volume do sistema.)
     const aplicarVolume = (pos, origem) => {
       pos = Math.min(1, Math.max(0, +pos || 0));
       if (pos < 0.04) pos = 0; else if (pos > 0.97) pos = 1;   // encaixa nas pontas (fácil zerar ou ir ao máximo no dedo)
-      audio.volume = pos * pos;
+      if (VOL_IOS) {
+        // no iPhone, 100% toca direto; abaixo disso liga o ganho (precisa ser num toque — a barra é um toque)
+        if (pos < 1 && (ganho || (origem && ligarGanho()))) { ganho.gain.value = pos * pos; acordarGanho(); }
+        else if (ganho) ganho.gain.value = pos * pos;
+      } else audio.volume = pos * pos;
       lsSet(LS_VOL, String(pos));
       $$("[data-np=vol]").forEach((o) => { if (o !== origem) o.value = pos; o.style.setProperty("--pos", pos * 100 + "%"); o.setAttribute("aria-valuetext", Math.round(pos * 100) + "%"); });
       if (pos > 0 && audio.muted) definirMudo(false);
       document.body.classList.toggle("vol-zero", pos === 0);
     };
-    const salvo = parseFloat(lsGet(LS_VOL) ?? "0.8");
+    const salvo = parseFloat(lsGet(LS_VOL) ?? (VOL_IOS ? "1" : "0.8"));
     $$("[data-np=vol]").forEach((v) => {
       v.value = isNaN(salvo) ? 0.8 : salvo;
       v.addEventListener("input", () => aplicarVolume(v.value, v));
     });
     aplicarVolume(isNaN(salvo) ? 0.8 : salvo);
-    window.__volumeApp = { aplicarVolume, audio };   // usado nos testes automáticos
+    if (VOL_IOS && salvo < 1) {   // volume guardado abaixo de 100%: aplica no primeiro toque na tela
+      const aoTocar = () => { document.removeEventListener("pointerdown", aoTocar, true); if (ligarGanho()) { ganho.gain.value = salvo * salvo; acordarGanho(); } };
+      document.addEventListener("pointerdown", aoTocar, true);
+    }
+    window.__volumeApp = { aplicarVolume, audio, get ganho() { return ganho; } };   // usado nos testes automáticos
     $$("[data-watch]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); abrirVideo(); }));
     // 🔈 silencia / ativa · 🔊 ativa o som (e começa a tocar se estiver parado)
     $$("[data-np=mute]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); definirMudo(!audio.muted); }));
     $$("[data-np=loud]").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
       definirMudo(false);
-      if (audio.volume < 0.05 && !document.body.classList.contains("vol-fixo")) window.__volumeApp.aplicarVolume(0.8);
+      const nivel = ganho ? ganho.gain.value : audio.volume;
+      if (nivel < 0.05 && !document.body.classList.contains("vol-fixo")) window.__volumeApp.aplicarVolume(0.8, b);
       if (document.body.dataset.player !== "playing" && document.body.dataset.player !== "loading") tocar();
     }));
     pintarMudo();
@@ -317,11 +356,12 @@
     $$("[data-np=song]").forEach((e) => (e.textContent = texto || (r ? r.slogan || config.site.slogan || "" : "")));
     $$("[data-np=track]").forEach((e) => (e.textContent = m ? m.titulo : ((r && r.slogan) || config.site.slogan || "")));
     $$("[data-np=artist]").forEach((e) => (e.textContent = m ? m.artista : ""));
-    const bola = (config.site && config.site.icone) || "assets/site/icone.svg";   // sem capa: a bola da logo da rádio
+    // Sem capa (ou sem nenhum metadado): a bola da logo da rádio
+    const bola = safeUrl((r && r.logo) || (config.site && config.site.icone) || "") || "assets/site/icone.svg";
     $$("[data-np=cover]").forEach((e) => {
       const temCapa = !!(m && m.capa);
-      e.innerHTML = m ? `<img src="${esc(temCapa ? m.capa : safeUrl(bola) || "assets/site/icone.svg")}" alt="${esc(temCapa ? "Capa: " + m.titulo : config.site.nome || "Logo")}" ${temCapa ? `onerror="this.src='${esc(bola)}';this.parentNode.classList.add('bola')"` : ""}>` : "";
-      e.classList.toggle("on", !!m); e.classList.toggle("bola", !!m && !temCapa);
+      e.innerHTML = r ? `<img src="${esc(temCapa ? m.capa : bola)}" alt="${esc(temCapa ? "Capa: " + m.titulo : (r.nome || "Logo da rádio"))}" ${temCapa ? `onerror="this.onerror=null;this.src='${esc(bola)}';this.parentNode.classList.add('bola')"` : ""}>` : "";
+      e.classList.toggle("on", !!r); e.classList.toggle("bola", !!r && !temCapa);
     });
     document.body.classList.toggle("has-song", !!texto);
     if (chave !== npChave && "mediaSession" in navigator && r) {   // tela de bloqueio / central de controle
