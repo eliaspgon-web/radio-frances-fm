@@ -10,3 +10,4 @@ data/usuarios.php
 data/sessoes.php
 data/tentativas.json
 __pycache__/
+data/audiencia.sqlite*

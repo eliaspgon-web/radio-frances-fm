@@ -542,7 +542,7 @@
     rascunho = clone(config);
     telaPainel(ov);
   }
-  function fecharAdmin() { const ov = $("#ra-admin"); if (ov) ov.className = ""; }
+  function fecharAdmin() { pararAudiencia(); limparImpressao(); const ov = $("#ra-admin"); if (ov) ov.className = ""; }
   function guardarSessao() { try { sessao ? sessionStorage.setItem(LS_SES, JSON.stringify(sessao)) : sessionStorage.removeItem(LS_SES); } catch (e) {} }
   function sessaoExpirou() { sessao = null; guardarSessao(); toast("Sua sessão expirou. Entre novamente.", "err"); telaLogin($("#ra-admin")); }
 
@@ -605,6 +605,7 @@
   }
 
   function telaPainel(ov) {
+    pararAudiencia();
     ov.innerHTML = `
       <div class="adm">
         <header class="adm-top">
@@ -618,7 +619,7 @@
           </div>
         </header>
         <nav class="adm-tabs">
-          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["aparencia", "🎨 Aparência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
+          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["aparencia", "🎨 Aparência"], ["audiencia", "📊 Audiência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
         </nav>
         <section class="adm-body"></section>
       </div>`;
@@ -629,7 +630,7 @@
     $("[data-act=import]", ov).onclick = importar;
     $("[data-act=sair]", ov).onclick = sair;
     if (aba === "usuarios" && !ehAdmin()) aba = "radios";
-    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, aparencia: abaAparencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
+    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, aparencia: abaAparencia, audiencia: abaAudiencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
   }
 
   // ----- aba Contato / WhatsApp -----
@@ -776,7 +777,7 @@
     $("[data-ini]", body).onchange = (e) => (rascunho.site.radioInicial = e.target.value);
     $("[data-auto]", body).onchange = (e) => (rascunho.site.autoplay = e.target.checked);
     $("[data-add]", body).onclick = () => { rs.push({ id: uid(), nome: "Nova rádio", cidade: "", frequencia: "", stream: "", logo: rascunho.site.logo || "", ativo: true }); abaRadios(body); };
-    $$(".adm-card", body).forEach((card) => {
+    $$(".adm-card[data-i]", body).forEach((card) => {
       const i = +card.dataset.i, r = rs[i];
       $$("[data-k]", card).forEach((inp) => inp.addEventListener("input", () => {
         r[inp.dataset.k] = inp.type === "checkbox" ? inp.checked : inp.value.trim();
@@ -924,6 +925,202 @@
       if (i.type === "color") aplicarCores(s);
     }));
     ligarImagens(body);
+  }
+
+  // ----- aba Audiência: ao vivo + relatórios com gráficos, impressão/PDF e CSV -----
+  let audSub = "vivo", audTimer = null, audPeriodo = null, graficos = [];
+  const COR_SERIE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]; // ordem fixa (paleta validada)
+  const NOME_PLAT = { android: "Android", iphone: "iPhone / iPad", computador: "Computador", outro: "Outros" };
+  function pararAudiencia() { clearInterval(audTimer); audTimer = null; graficos.forEach((g) => g.destroy()); graficos = []; }
+  function limparImpressao() { const p = $("#relatorio-print"); if (p) p.remove(); }
+  const nomeRadio = (id) => { const r = (config.radios || []).find((x) => x.id === id); return r ? r.nome + (r.frequencia ? " · " + r.frequencia : "") : id; };
+  const corRadio = (id) => { const i = (config.radios || []).findIndex((x) => x.id === id); return COR_SERIE[(i < 0 ? 7 : i) % 8]; };
+  const n0 = (v) => Number(v || 0).toLocaleString("pt-BR");
+  const hojeISO = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const somaDias = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return hojeISO(d); };
+  const fmtDia = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  function carregarChart() {
+    if (window.Chart) return Promise.resolve(window.Chart);
+    return new Promise((ok, ko) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"; sc.onload = () => { try { window.Chart.defaults.locale = "pt-BR"; window.Chart.defaults.font.family = "Inter, system-ui, sans-serif"; } catch (e) {} ok(window.Chart); }; sc.onerror = () => ko(new Error("Não foi possível carregar os gráficos")); document.head.appendChild(sc); });
+  }
+
+  // dados de demonstração (prévia e versão sem servidor) — sempre identificados como tal
+  function demoAud(acao, de, ate) {
+    const rnd = (k) => { let x = Math.sin(k * 9301 + 49297) * 233280; return x - Math.floor(x); };
+    const curva = (h) => Math.max(0.05, Math.exp(-((h - 8.5) ** 2) / 6) * 0.95 + Math.exp(-((h - 17.5) ** 2) / 5) * 0.8 + 0.12);
+    const ids = (config.radios || []).map((r) => r.id);
+    if (acao === "agora") {
+      const ag = new Date(), h = ag.getHours() + ag.getMinutes() / 60, base = Math.round(140 * curva(h));
+      const serie = Array.from({ length: 60 }, (_, i) => { const t = new Date(ag - (59 - i) * 60000); const o = Math.round(140 * curva(t.getHours() + t.getMinutes() / 60) * (0.9 + rnd(t.getMinutes()) * 0.2)); return { hora: t.toTimeString().slice(0, 5), ouvintes: o, conectados: Math.round(o * 1.25) }; });
+      const ouv = serie[59].ouvintes, porRadio = {}; ids.forEach((id, i) => (porRadio[id] = i === 0 ? Math.round(ouv * 0.72) : Math.round(ouv * 0.28 / Math.max(1, ids.length - 1))));
+      return { demo: true, conectados: Math.round(ouv * 1.25), ouvintes: ouv, porRadio, porPlataforma: { android: Math.round(ouv * 0.62), iphone: Math.round(ouv * 0.28), computador: Math.round(ouv * 0.1) }, noApp: Math.round(ouv * 0.35), ultimos60: serie, atualizado: ag.toISOString(), base };
+    }
+    const dias = []; for (let d = de; d <= ate; d = somaDias(d, 1)) dias.push(d);
+    const porDia = dias.map((d, i) => { const k = rnd(d.split("-").join("") * 1); const fim = [0, 6].includes(new Date(d + "T12:00:00").getDay()) ? 0.8 : 1; const u = Math.round((900 + k * 400) * fim); return { dia: d, ouvintesUnicos: u, sessoes: Math.round(u * 1.7), pico: Math.round((120 + k * 60) * fim), horas: Math.round(u * 0.62) }; });
+    const tot = porDia.reduce((a, x) => ({ u: a.u + x.ouvintesUnicos, s: a.s + x.sessoes, h: a.h + x.horas, p: Math.max(a.p, x.pico) }), { u: 0, s: 0, h: 0, p: 0 });
+    const out = { demo: true, de, ate, gerado: new Date().toISOString(),
+      kpi: { ouvintesUnicos: dias.length > 1 ? Math.round(tot.u * 0.55) : tot.u, sessoes: tot.s, sessoesComAudio: Math.round(tot.s * 0.82), horasOuvidas: tot.h, mediaMinutos: 31.4, picoSimultaneo: tot.p, picoQuando: de + "T08:35:00", aberturasNoApp: Math.round(tot.s * 0.34) },
+      porRadio: ids.map((id, i) => ({ radio: id, horas: Math.round(tot.h * (i === 0 ? 0.72 : 0.28 / Math.max(1, ids.length - 1))) })),
+      porPlataforma: [{ plataforma: "android", aparelhos: Math.round(tot.u * 0.6) }, { plataforma: "iphone", aparelhos: Math.round(tot.u * 0.29) }, { plataforma: "computador", aparelhos: Math.round(tot.u * 0.11) }],
+      picoPorHora: Array.from({ length: 24 }, (_, h) => Math.round(150 * curva(h + 0.5))) };
+    if (de === ate) out.simultaneos5min = Array.from({ length: 288 }, (_, i) => { const h = i / 12; return { hora: String(Math.floor(h)).padStart(2, "0") + ":" + String((i % 12) * 5).padStart(2, "0"), ouvintes: Math.round(150 * curva(h) * (0.92 + rnd(i) * 0.16)) }; });
+    else out.porDia = porDia;
+    return out;
+  }
+
+  async function apiAud(acao, de, ate) {
+    if (PREVIEW || ESTATICO) return demoAud(acao, de, ate);
+    const q = acao === "agora" ? "acao=agora" : `acao=relatorio&de=${de}&ate=${ate}`;
+    const r = await fetch(API + "audiencia.php?" + q + "&t=" + Date.now(), { headers: authH(), cache: "no-store" });
+    if (r.status === 401) { sessaoExpirou(); throw new Error("Sessão expirada"); }
+    const j = await r.json(); if (!r.ok) throw new Error(j.erro || "Erro ao carregar"); return j;
+  }
+
+  // estilo comum dos gráficos: linhas 2 px, barras com cantos de 4 px, grade discreta, 1 eixo
+  function opcoesGrafico(extra = {}) {
+    return Object.assign({ responsive: true, maintainAspectRatio: false, animation: { duration: 250 }, interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: "#14181f", padding: 10, cornerRadius: 8, titleFont: { weight: "700" }, displayColors: true, boxPadding: 4 } },
+      scales: { x: { grid: { display: false }, ticks: { color: "#6b7180", maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: "#d9dce4" } },
+                y: { beginAtZero: true, grid: { color: "#eef0f4" }, ticks: { color: "#6b7180", precision: 0 }, border: { display: false } } } }, extra);
+  }
+  function grafico(canvas, cfg) { const g = new window.Chart(canvas, cfg); graficos.push(g); return g; }
+  const linha = (rotulos, dados, nome, cor = COR_SERIE[0]) => ({ type: "line", data: { labels: rotulos, datasets: [{ label: nome, data: dados, borderColor: cor, backgroundColor: cor + "22", fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0, pointHoverRadius: 5, pointHoverBorderWidth: 2, pointHoverBorderColor: "#fff" }] }, options: opcoesGrafico() });
+  const barras = (rotulos, dados, nome, cores, horizontal) => ({ type: "bar", data: { labels: rotulos, datasets: [{ label: nome, data: dados, backgroundColor: cores, borderRadius: 4, borderSkipped: false, maxBarThickness: horizontal ? 26 : 34, categoryPercentage: 0.8, barPercentage: 0.9 }] },
+    options: opcoesGrafico(horizontal ? { indexAxis: "y", interaction: { mode: "nearest", intersect: true }, scales: { x: { beginAtZero: true, grid: { color: "#eef0f4" }, ticks: { color: "#6b7180", precision: 0 }, border: { display: false } }, y: { grid: { display: false }, ticks: { color: "#2b3040", font: { weight: "600" } }, border: { color: "#d9dce4" } } } } : {}) });
+
+  async function abaAudiencia(body) {
+    pararAudiencia();
+    body.innerHTML = `
+      <div class="adm-head"><h3>Audiência do app</h3>
+        <div class="seg"><button data-sub="vivo" class="${audSub === "vivo" ? "on" : ""}">● Ao vivo</button><button data-sub="relatorio" class="${audSub === "relatorio" ? "on" : ""}">📈 Relatórios</button></div></div>
+      ${PREVIEW || ESTATICO ? `<p class="hint demo">🧪 <b>Dados de demonstração.</b> A medição real funciona com o app no servidor com PHP (ex.: francesfm.com.br/app): cada aparelho envia um sinal anônimo a cada 30 s.</p>` : ""}
+      <div data-aud></div>`;
+    $$("[data-sub]", body).forEach((b) => (b.onclick = () => { audSub = b.dataset.sub; abaAudiencia(body); }));
+    const alvo = $("[data-aud]", body);
+    try { await carregarChart(); } catch (e) { alvo.innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
+    if (audSub === "vivo") return audVivo(alvo);
+    return audRelatorio(alvo);
+  }
+
+  async function audVivo(alvo) {
+    alvo.innerHTML = `
+      <div class="kpis" data-k></div>
+      <div class="viz-card"><div class="viz-h"><h4>Ouvintes simultâneos — últimos 60 minutos</h4><small data-upd></small></div><div class="viz-box"><canvas data-c1></canvas></div></div>
+      <div class="viz-2">
+        <div class="viz-card"><div class="viz-h"><h4>Ouvindo agora, por rádio</h4></div><div class="viz-box sm"><canvas data-c2></canvas></div></div>
+        <div class="viz-card"><div class="viz-h"><h4>Conectados agora, por aparelho</h4></div><div class="viz-box sm"><canvas data-c3></canvas></div></div>
+      </div>`;
+    let g1, g2, g3;
+    const pintar = async () => {
+      let j; try { j = await apiAud("agora"); } catch (e) { $("[data-upd]", alvo).textContent = e.message; return; }
+      const radios = Object.keys(j.porRadio || {}).sort((a, b) => (config.radios || []).findIndex((r) => r.id === a) - (config.radios || []).findIndex((r) => r.id === b));
+      const plats = Object.entries(j.porPlataforma || {}).sort((a, b) => b[1] - a[1]);
+      $("[data-k]", alvo).innerHTML = [
+        ["Conectados agora", n0(j.conectados), "app aberto nos últimos 2 min"],
+        ["Ouvindo agora", n0(j.ouvintes), "com a rádio tocando", true],
+        ...radios.map((id) => [nomeRadio(id), n0(j.porRadio[id]), "ouvintes", false, corRadio(id)]),
+        ["No app instalado", n0(j.noApp), "abriram pela tela inicial"],
+      ].map(([t, v, d, dest, cor]) => `<div class="kpi ${dest ? "dest" : ""}">${cor ? `<i style="background:${cor}"></i>` : ""}<span>${esc(t)}</span><b>${v}</b><small>${esc(d)}</small></div>`).join("");
+      $("[data-upd]", alvo).innerHTML = `<span class="pulse"></span> atualizado às ${new Date(j.atualizado).toLocaleTimeString("pt-BR")} · a cada 10 s`;
+      const rot = j.ultimos60.map((x) => x.hora), dad = j.ultimos60.map((x) => x.ouvintes);
+      if (!g1) g1 = grafico($("[data-c1]", alvo), linha(rot, dad, "Ouvintes")); else { g1.data.labels = rot; g1.data.datasets[0].data = dad; g1.update("none"); }
+      const r2 = radios.map(nomeRadio), d2 = radios.map((id) => j.porRadio[id]), c2 = radios.map(corRadio);
+      if (!g2) g2 = grafico($("[data-c2]", alvo), barras(r2, d2, "Ouvintes", c2, true)); else { g2.data.labels = r2; g2.data.datasets[0].data = d2; g2.data.datasets[0].backgroundColor = c2; g2.update("none"); }
+      const r3 = plats.map(([p]) => NOME_PLAT[p] || p), d3 = plats.map(([, v]) => v);
+      if (!g3) g3 = grafico($("[data-c3]", alvo), barras(r3, d3, "Conectados", COR_SERIE[0], true)); else { g3.data.labels = r3; g3.data.datasets[0].data = d3; g3.update("none"); }
+    };
+    await pintar();
+    audTimer = setInterval(pintar, 10000);
+  }
+
+  async function audRelatorio(alvo) {
+    const hoje = hojeISO();
+    audPeriodo = audPeriodo || { de: hoje, ate: hoje, rotulo: "hoje" };
+    const atalho = (r, de, ate) => `<button data-p="${r}" data-de="${de}" data-ate="${ate}" class="${audPeriodo.rotulo === r ? "on" : ""}">${{ hoje: "Hoje", ontem: "Ontem", d7: "7 dias", d30: "30 dias" }[r]}</button>`;
+    alvo.innerHTML = `
+      <div class="rel-ctrl">
+        <div class="seg">${atalho("hoje", hoje, hoje)}${atalho("ontem", somaDias(hoje, -1), somaDias(hoje, -1))}${atalho("d7", somaDias(hoje, -6), hoje)}${atalho("d30", somaDias(hoje, -29), hoje)}</div>
+        <label class="f inline"><span>De</span><input type="date" data-de value="${audPeriodo.de}" max="${hoje}"></label>
+        <label class="f inline"><span>Até</span><input type="date" data-ate value="${audPeriodo.ate}" max="${hoje}"></label>
+        <span class="grow"></span>
+        <button class="btn ghost sm" data-csv>⬇ CSV</button>
+        <button class="btn primary sm" data-print>🖨 Imprimir / PDF</button>
+      </div>
+      <div data-rel><p class="hint">Carregando relatório…</p></div>`;
+    const recarregar = () => audRelatorio(alvo);
+    $$("[data-p]", alvo).forEach((b) => (b.onclick = () => { audPeriodo = { de: b.dataset.de, ate: b.dataset.ate, rotulo: b.dataset.p }; recarregar(); }));
+    const mudouData = () => { const de = $("[data-de]", alvo).value, ate = $("[data-ate]", alvo).value; if (de && ate) { audPeriodo = { de: de <= ate ? de : ate, ate: de <= ate ? ate : de, rotulo: "" }; recarregar(); } };
+    $("[data-de]", alvo).onchange = mudouData; $("[data-ate]", alvo).onchange = mudouData;
+    let j; try { j = await apiAud("relatorio", audPeriodo.de, audPeriodo.ate); } catch (e) { $("[data-rel]", alvo).innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
+    graficos.forEach((g) => g.destroy()); graficos = [];
+    const umDia = j.de === j.ate, k = j.kpi;
+    const periodoTxt = umDia ? fmtDia(j.de) : `${fmtDia(j.de)} a ${fmtDia(j.ate)}`;
+    const picoTxt = k.picoQuando ? new Date(k.picoQuando).toLocaleString("pt-BR", umDia ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+    const kpis = [
+      ["Ouvintes únicos", n0(k.ouvintesUnicos), "aparelhos diferentes", true],
+      ["Pico simultâneo", n0(k.picoSimultaneo), "às " + picoTxt, true],
+      ["Horas ouvidas", n0(k.horasOuvidas), "soma de todos os ouvintes"],
+      ["Tempo médio", n0(k.mediaMinutos) + " min", "por sessão com áudio"],
+      ["Sessões", n0(k.sessoes), n0(k.sessoesComAudio) + " com áudio"],
+      ["Pelo app instalado", n0(k.aberturasNoApp), k.sessoes ? Math.round((k.aberturasNoApp / k.sessoes) * 100) + "% das sessões" : "—"],
+    ];
+    const linhasTabela = umDia
+      ? j.picoPorHora.map((v, h) => [String(h).padStart(2, "0") + ":00", v])
+      : j.porDia.map((d) => [fmtDia(d.dia), d.ouvintesUnicos, d.pico, d.horas, d.sessoes]);
+    const cab = umDia ? ["Hora", "Pico de ouvintes simultâneos"] : ["Dia", "Ouvintes únicos", "Pico simultâneo", "Horas ouvidas", "Sessões"];
+    $("[data-rel]", alvo).innerHTML = `
+      <div class="rel" id="rel-atual">
+        <div class="rel-tit"><h4>Relatório de audiência — ${esc(periodoTxt)}</h4>${j.demo ? `<em class="tag">demonstração</em>` : ""}</div>
+        <div class="kpis">${kpis.map(([t, v, d, dest]) => `<div class="kpi ${dest ? "dest" : ""}"><span>${esc(t)}</span><b>${v}</b><small>${esc(d)}</small></div>`).join("")}</div>
+        ${umDia ? `<div class="viz-card"><div class="viz-h"><h4>Ouvintes simultâneos ao longo do dia</h4><small>máximo a cada 5 min</small></div><div class="viz-box"><canvas data-g="dia"></canvas></div></div>`
+                : `<div class="viz-2"><div class="viz-card"><div class="viz-h"><h4>Ouvintes únicos por dia</h4></div><div class="viz-box"><canvas data-g="unicos"></canvas></div></div>
+                   <div class="viz-card"><div class="viz-h"><h4>Pico simultâneo por dia</h4></div><div class="viz-box"><canvas data-g="picos"></canvas></div></div></div>`}
+        <div class="viz-2">
+          <div class="viz-card"><div class="viz-h"><h4>Horas ouvidas por rádio</h4></div><div class="viz-box sm"><canvas data-g="radio"></canvas></div></div>
+          <div class="viz-card"><div class="viz-h"><h4>Aparelhos por plataforma</h4></div><div class="viz-box sm"><canvas data-g="plat"></canvas></div></div>
+        </div>
+        ${umDia ? `<div class="viz-card"><div class="viz-h"><h4>Pico de ouvintes por hora</h4></div><div class="viz-box"><canvas data-g="hora"></canvas></div></div>` : ""}
+        <details class="viz-card tabela" ${umDia ? "" : "open"}><summary>Tabela de dados</summary>
+          <table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhasTabela.map((l) => `<tr>${l.map((c, i) => `<td>${i ? n0(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+        </details>
+      </div>`;
+    const G = (n) => $(`[data-g="${n}"]`, alvo);
+    if (umDia) {
+      grafico(G("dia"), linha(j.simultaneos5min.map((x) => x.hora), j.simultaneos5min.map((x) => x.ouvintes), "Ouvintes simultâneos"));
+      grafico(G("hora"), barras(j.picoPorHora.map((_, h) => String(h).padStart(2, "0") + "h"), j.picoPorHora, "Pico de ouvintes", COR_SERIE[0]));
+    } else {
+      const rot = j.porDia.map((d) => d.dia.slice(8, 10) + "/" + d.dia.slice(5, 7));
+      grafico(G("unicos"), barras(rot, j.porDia.map((d) => d.ouvintesUnicos), "Ouvintes únicos", COR_SERIE[0]));
+      grafico(G("picos"), barras(rot, j.porDia.map((d) => d.pico), "Pico simultâneo", COR_SERIE[0]));
+    }
+    grafico(G("radio"), barras(j.porRadio.map((r) => nomeRadio(r.radio)), j.porRadio.map((r) => r.horas), "Horas ouvidas", j.porRadio.map((r) => corRadio(r.radio)), true));
+    grafico(G("plat"), barras(j.porPlataforma.map((p) => NOME_PLAT[p.plataforma] || p.plataforma), j.porPlataforma.map((p) => p.aparelhos), "Aparelhos", COR_SERIE[0], true));
+
+    $("[data-print]", alvo).onclick = () => imprimirRelatorio(j, periodoTxt, kpis, cab, linhasTabela);
+    $("[data-csv]", alvo).onclick = () => {
+      const csv = [["Relatório de audiência", periodoTxt], [], ["Indicador", "Valor"], ...kpis.map(([t, v]) => [t, v]), [], cab, ...linhasTabela]
+        .map((l) => l.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+      a.download = `audiencia_${j.de}${umDia ? "" : "_a_" + j.ate}.csv`; document.body.appendChild(a); a.click(); a.remove();
+      if (PREVIEW) toast("Na prévia o download é bloqueado; no app publicado o CSV é baixado.");
+    };
+  }
+
+  // versão para impressão: abre o diálogo do navegador (escolha "Salvar como PDF" para gerar o arquivo)
+  function imprimirRelatorio(j, periodoTxt, kpis, cab, linhas) {
+    const imgs = graficos.map((g) => ({ titulo: g.canvas.closest(".viz-card").querySelector("h4").textContent, src: g.toBase64Image("image/png", 1) }));
+    let p = $("#relatorio-print"); if (p) p.remove();
+    p = document.createElement("div"); p.id = "relatorio-print";
+    p.innerHTML = `
+      <header><div>${imgHTML(config.site.logo, config.site.nome, "rp-logo")}</div><div><h1>Relatório de audiência</h1><p>${esc(config.site.nome || "")} · ${esc(periodoTxt)}</p></div></header>
+      ${j.demo ? `<p class="rp-demo">Dados de demonstração</p>` : ""}
+      <section class="rp-kpis">${kpis.map(([t, v, d]) => `<div><span>${esc(t)}</span><b>${v}</b><small>${esc(d)}</small></div>`).join("")}</section>
+      <section class="rp-graficos">${imgs.map((i) => `<figure><figcaption>${esc(i.titulo)}</figcaption><img src="${i.src}" alt="${esc(i.titulo)}"></figure>`).join("")}</section>
+      <section class="rp-tabela"><h2>Dados</h2><table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhas.map((l) => `<tr>${l.map((c, i) => `<td>${i ? n0(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></section>
+      <footer>Gerado em ${new Date().toLocaleString("pt-BR")} por ${esc(sessao ? sessao.nome : "")} · Medição anônima: cada aparelho é contado por um código aleatório, sem dados pessoais.</footer>`;
+    document.body.appendChild(p);   // fica oculto na tela; só aparece na impressão (removido ao fechar o painel)
+    setTimeout(() => { try { window.print(); } catch (e) {} if (PREVIEW) toast("Na prévia a impressão é bloqueada; no app publicado abre o diálogo de impressão/PDF."); }, 300);
   }
 
   // ----- aba Usuários (só administradores) -----
@@ -1113,6 +1310,32 @@
     document.body.prepend(bar);
   }
 
+  // ---------- medição de audiência (anônima) ----------
+  // Um código aleatório por aparelho (sem nome, e-mail ou IP). Sinal a cada 30 s e ao tocar/pausar/fechar.
+  const novoId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 32);
+  let DID = lsGet("radioapp.did"); if (!/^[a-z0-9]{8,40}$/.test(DID || "")) { DID = novoId(); lsSet("radioapp.did", DID); }
+  const SID = novoId();
+  const UA = navigator.userAgent;
+  const PLATAFORMA = /iphone|ipad|ipod/i.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iphone" : /android/i.test(UA) ? "android" : /windows|macintosh|linux|cros/i.test(UA) ? "computador" : "outro";
+  const NO_APP = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  let ultimoSinal = "";
+  function sinal(fim) {
+    if (PREVIEW || ESTATICO || !config || config.site.medicao === false) return;
+    const tocando = document.body.dataset.player === "playing";
+    const d = JSON.stringify({ did: DID, sid: SID, radio: atual ? atual.id : "", tocando, plataforma: PLATAFORMA, app: NO_APP, fim: !!fim });
+    try {
+      if (fim && navigator.sendBeacon) { navigator.sendBeacon(API + "audiencia.php", new Blob([d], { type: "application/json" })); return; }
+      fetch(API + "audiencia.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: d, keepalive: true }).catch(() => {});
+    } catch (e) {}
+  }
+  function iniciarMedicao() {
+    sinal();
+    setInterval(() => sinal(), 30000);
+    new MutationObserver(() => { const e = document.body.dataset.player; if ((e === "playing" || e === "paused") && e !== ultimoSinal) { ultimoSinal = e; sinal(); } }).observe(document.body, { attributes: true, attributeFilter: ["data-player"] });
+    addEventListener("pagehide", () => sinal(true));
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) sinal(); });
+  }
+
   // ---------- início ----------
   async function iniciar() {
     config = await carregarConfig();
@@ -1129,6 +1352,7 @@
     renderContato();
     renderNoticias();
     checarAoVivo();
+    iniciarMedicao();
     if (!PREVIEW && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
     if (location.hash === "#admin") abrirAdmin();
   }
