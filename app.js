@@ -26,11 +26,13 @@
   // Detecta pelo aparelho (alguns iOS "aceitam" o valor do volume mas não mudam o som) e também pela leitura do volume.
   const EH_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const VOL_IOS = EH_IOS || (() => { const t = new Audio(); try { t.volume = 0.5; } catch (e) {} return t.volume === 1; })();
-  if (VOL_IOS) audio.crossOrigin = "anonymous";
+  // O desvio pelo Web Audio foi desligado: no iPhone ele pode silenciar o som com o player "tocando".
+  // No iPhone o volume fica nos botões do aparelho (regra da Apple para páginas web).
+  const USAR_GANHO = false;
   let ctxAudio = null, ganho = null, semCors = false;
   function ligarGanho() {   // só dentro de um toque do usuário (regra do iOS para áudio)
     if (ganho) return true;
-    if (semCors || !VOL_IOS) return false;
+    if (!USAR_GANHO || semCors || !VOL_IOS) return false;
     try {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
       ctxAudio = new AC();
@@ -186,7 +188,7 @@
     // reconecta ao vivo (evita tocar áudio "atrasado" do buffer)
     audio.src = atual.stream;
     setEstado("loading", "Conectando…");
-    audio.play().catch(() => setEstado("error", "Não foi possível conectar ao streaming"));
+    audio.play().catch((err) => { if (err && err.name === "AbortError") return; if (err && err.name === "NotAllowedError") { querTocar = false; setEstado("paused", "Toque para ouvir"); return; } reconectar("play falhou"); });
   }
   // Toca sozinho ao abrir. Se o navegador bloquear som automático (regra do iPhone/Android),
   // o primeiro toque em qualquer lugar da tela começa a rádio.
@@ -201,7 +203,8 @@
     querTocar = true; tentativas = 0;
     audio.src = atual.stream;
     setEstado("loading", "Conectando…");
-    audio.play().then(soltar).catch(() => {
+    audio.play().then(soltar).catch((err) => {
+      if (err && err.name !== "NotAllowedError") return;   // carga interrompida/trocada: não é bloqueio de som automático
       querTocar = false;
       setEstado("paused", "Toque para ouvir");
       const d = document.createElement("div"); d.id = "toque-ouvir"; d.setAttribute("role", "button");
@@ -214,13 +217,24 @@
   function pausar() { querTocar = false; clearTimeout(vigia); audio.pause(); setEstado("paused", "Pausado"); }
   function alternar() { (document.body.dataset.player === "playing" || document.body.dataset.player === "loading") ? pausar() : tocar(); }
 
-  audio.addEventListener("playing", () => { tentativas = 0; clearTimeout(vigia); setEstado("playing", "AO VIVO"); });
+  audio.addEventListener("playing", () => { querTocar = true; tentativas = 0; clearTimeout(vigia); clearTimeout(vigiaRede); setEstado("playing", "AO VIVO"); });
   // Stream ao vivo caiu (sinal fraco, troca de wi-fi/4G, servidor): volta sozinho
   audio.addEventListener("ended", () => reconectar("fim"));
-  audio.addEventListener("stalled", () => { clearTimeout(vigia); vigia = setTimeout(() => { if (audio.readyState < 3) reconectar("travou"); }, 8000); });
-  audio.addEventListener("waiting", () => { clearTimeout(vigia); vigia = setTimeout(() => { if (audio.readyState < 3) reconectar("esperando"); }, 10000); });
+  let vigiaRede = null;   // separado do "vigia" para não cancelar uma reconexão já agendada
+  audio.addEventListener("stalled", () => { clearTimeout(vigiaRede); vigiaRede = setTimeout(() => { if (audio.readyState < 3) reconectar("travou"); }, 8000); });
+  audio.addEventListener("waiting", () => { clearTimeout(vigiaRede); vigiaRede = setTimeout(() => { if (audio.readyState < 3) reconectar("esperando"); }, 10000); });
   // Pausa que não veio do app (ligação, outro app tocando, fone desconectado): respeita e mostra pausado
   audio.addEventListener("pause", () => { if (querTocar && !audio.ended && audio.error == null && document.body.dataset.player === "playing") { querTocar = false; setEstado("paused", "Pausado"); } });
+  let ultimoTempo = -1, parado = 0;
+  setInterval(() => {
+    const st = document.body.dataset.player;
+    if (!querTocar || PREVIEW || (st !== "playing" && st !== "loading")) { parado = 0; ultimoTempo = -1; return; }
+    if (st === "loading") { if (++parado >= 5) { parado = 0; reconectar("conectando demais"); } return; }   // ~15 s preso em "Conectando…"
+    if (audio.paused && !audio.ended) { audio.play().catch(() => reconectar("pausou")); return; }
+    if (audio.currentTime === ultimoTempo) { if (++parado >= 3) { parado = 0; reconectar("congelou"); } }   // ~9 s sem avançar
+    else parado = 0;
+    ultimoTempo = audio.currentTime;
+  }, 3000);
   window.addEventListener("online", () => { if (querTocar && audio.readyState < 3) reconectar("online"); });
   audio.addEventListener("waiting", () => setEstado("loading", "Carregando…"));
   let testeSemCors = false;
@@ -269,7 +283,7 @@
     $$("[data-np=next]").forEach((b) => b.addEventListener("click", () => pular(1)));
     $$("[data-np=prev]").forEach((b) => b.addEventListener("click", () => pular(-1)));
     // iPhone/iPad não deixam a página mudar o volume (só os botões do aparelho): detecta e avisa
-    if (VOL_IOS && !(window.AudioContext || window.webkitAudioContext)) document.body.classList.add("vol-fixo");
+    if (VOL_IOS && (!USAR_GANHO || !(window.AudioContext || window.webkitAudioContext))) document.body.classList.add("vol-fixo");
     // Barra de volume com curva de áudio (como num aparelho de som): metade da barra ≈ metade do volume que se ouve.
     // O som final = volume do celular × volume da barra. (Páginas web não podem ler/mudar o volume do sistema.)
     const aplicarVolume = (pos, origem) => {
@@ -294,7 +308,7 @@
       }
     });
     aplicarVolume(isNaN(salvo) ? 0.8 : salvo);
-    window.__volumeApp = { aplicarVolume, audio, get ganho() { return ganho; } };
+    window.__volumeApp = { aplicarVolume, audio, get ganho() { return ganho; }, get estado() { return { querTocar, tentativas, parado, ultimoTempo }; } };
     if (location.hash === "#diag") {
       const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#0f0;font:11px monospace;padding:6px;border-radius:6px;max-width:95vw;white-space:pre-wrap;pointer-events:none";
       document.body.appendChild(d);
