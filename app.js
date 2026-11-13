@@ -480,13 +480,19 @@
   const urlCanal = () => { const y = (config.site && config.site.youtube) || ""; return /^https?:/i.test(y) ? y.replace(/\/+$/, "") : ""; };
   let estadoVideo = null;
 
+  // Status da transmissão: no servidor vem do aovivo.php; no GitHub Pages, do data/aovivo.json (atualizado a cada 5 min)
+  async function obterAoVivo() {
+    if (PREVIEW) return null;
+    const urls = ESTATICO ? ["data/aovivo.json?t=" + Date.now()] : [API + "aovivo.php?t=" + Date.now(), "data/aovivo.json?t=" + Date.now()];
+    for (const u of urls) {
+      try { const r = await fetch(u, { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (j && !j.erro) { j._t = Date.now(); return j; } } } catch (e) {}
+    }
+    return null;
+  }
   async function checarAoVivo() {
-    if (PREVIEW || ESTATICO) { marcarVideo({ aoVivo: false }); return; }
-    try {
-      const r = await fetch(API + "aovivo.php?t=" + Date.now(), { cache: "no-store" });
-      if (r.ok) { estadoVideo = await r.json(); marcarVideo(estadoVideo); return; }
-    } catch (e) {}
-    marcarVideo({ aoVivo: false });
+    const v = await obterAoVivo();
+    if (v) estadoVideo = v;
+    marcarVideo(estadoVideo || { aoVivo: false });
   }
   function marcarVideo(v) {
     document.body.dataset.video = v.aoVivo ? "live" : "off";
@@ -502,6 +508,7 @@
     m.className = "open " + cls;
     m.innerHTML = `<div class="rm-box"><button class="rm-x" aria-label="Fechar">×</button>${html}</div>`;
     const fechar = () => {
+      clearInterval(vigiaLive);
       const eraVideo = m.classList.contains("video");
       m.className = ""; m.innerHTML = "";                       // remove o vídeo (para o som dele)
       if (eraVideo && retomarAposVideo) { retomarAposVideo = false; tocar(); toast("Voltando para " + (atual ? atual.nome : "a rádio")); }
@@ -514,19 +521,43 @@
 
   const idCanalYT = () => { const m = String((config.site && config.site.youtube) || "").match(/UC[\w-]{22}/); return m ? m[0] : ""; };
 
+  let vigiaLive = null;
   function telaVideo(ativa, vivo) {
+    clearInterval(vigiaLive);
     const id = idCanalYT(), canal = urlCanal();
-    const src = {
-      vivo: vivo && vivo.videoId ? `https://www.youtube.com/embed/${encodeURIComponent(vivo.videoId)}?autoplay=1&rel=0&playsinline=1` : `https://www.youtube.com/embed/live_stream?channel=${id}&autoplay=1&rel=0&playsinline=1`,
-      videos: `https://www.youtube.com/embed/videoseries?list=UU${id.slice(2)}&rel=0&playsinline=1`,
-    };
-    const m = modal(`
-      <div class="rm-tabs"><button data-v="vivo" class="${ativa === "vivo" ? "on" : ""}">🔴 Ao vivo</button><button data-v="videos" class="${ativa === "videos" ? "on" : ""}">▶ Últimos vídeos</button></div>
-      <div class="rm-video"><iframe src="${src[ativa]}" title="YouTube" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
-      <div class="rm-info">${ativa === "vivo" ? `<span class="live-pill">● AO VIVO</span><strong>${esc((vivo && vivo.titulo) || "Transmissão ao vivo")}</strong>` : `<strong>Vídeos do canal</strong>`}
-        <small class="rm-dica">${ativa === "vivo" && !(vivo && vivo.aoVivo) ? "Se aparecer “vídeo indisponível”, o canal não está ao vivo agora — veja os últimos vídeos." : ""}</small>
-        <a href="${esc(canal)}${ativa === "vivo" ? "/live" : "/videos"}" target="_blank" rel="noopener">Abrir no YouTube ↗</a></div>`, "video");
-    $$("[data-v]", m).forEach((b) => (b.onclick = () => telaVideo(b.dataset.v, vivo)));
+    const temLive = !!(vivo && vivo.aoVivo && vivo.videoId);
+    const semEmbed = temLive && vivo.embed === false;
+    const sabeQueNao = vivo && vivo.aoVivo === false;
+    const linkLive = temLive ? `https://www.youtube.com/watch?v=${encodeURIComponent(vivo.videoId)}` : `${canal}/live`;
+    const abas = `<div class="rm-tabs"><button data-v="vivo" class="${ativa === "vivo" ? "on" : ""}">🔴 Ao vivo</button><button data-v="videos" class="${ativa === "videos" ? "on" : ""}">▶ Últimos vídeos</button></div>`;
+    const iframe = (src) => `<div class="rm-video"><iframe src="${src}" title="YouTube" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
+    let corpo, info;
+    if (ativa === "videos") {
+      corpo = iframe(`https://www.youtube.com/embed/videoseries?list=UU${id.slice(2)}&rel=0&playsinline=1`);
+      info = `<strong>Vídeos do canal</strong><a href="${esc(canal)}/videos" target="_blank" rel="noopener">Abrir no YouTube ↗</a>`;
+    } else if (temLive && !semEmbed) {
+      corpo = iframe(`https://www.youtube.com/embed/${encodeURIComponent(vivo.videoId)}?autoplay=1&rel=0&playsinline=1`);
+      info = `<span class="live-pill">● AO VIVO</span><strong>${esc(vivo.titulo || "Transmissão ao vivo")}</strong><a href="${esc(linkLive)}" target="_blank" rel="noopener">Abrir no YouTube ↗</a>`;
+    } else if (semEmbed) {
+      corpo = `<div class="rm-espera"><span class="live-pill">● AO VIVO AGORA</span><h3>${esc(vivo.titulo || "Transmissão ao vivo")}</h3><p>O canal só permite assistir esta transmissão no YouTube.</p><a class="btn primary" href="${esc(linkLive)}" target="_blank" rel="noopener">▶ Assistir ao vivo no YouTube</a></div>`;
+      info = "";
+    } else if (sabeQueNao) {
+      corpo = `<div class="rm-espera"><span class="rm-pulso"></span><h3>O canal não está ao vivo agora</h3><p>Deixe esta tela aberta: quando a transmissão começar, ela abre aqui sozinha.</p><button class="btn primary" data-v="videos">▶ Ver os últimos vídeos</button></div>`;
+      info = `<small class="rm-dica">Verificando a cada minuto…</small>`;
+    } else {   // sem informação (falha de rede): tenta a live do canal direto
+      corpo = iframe(`https://www.youtube.com/embed/live_stream?channel=${id}&autoplay=1&rel=0&playsinline=1`);
+      info = `<span class="live-pill">● AO VIVO</span><strong>Transmissão ao vivo</strong><a href="${esc(linkLive)}" target="_blank" rel="noopener">Abrir no YouTube ↗</a>`;
+    }
+    const m = modal(`${abas}${corpo}${info ? `<div class="rm-info">${info}</div>` : ""}`, "video");
+    $$("[data-v]", m).forEach((b) => (b.onclick = () => telaVideo(b.dataset.v, estadoVideo || vivo)));
+    // insiste na transmissão: com a aba "Ao vivo" aberta sem live, confere de minuto em minuto e abre quando começar
+    if (ativa === "vivo" && !temLive) {
+      vigiaLive = setInterval(async () => {
+        if (!m.classList.contains("open") || !m.classList.contains("video")) return clearInterval(vigiaLive);
+        const v = await obterAoVivo();
+        if (v) { estadoVideo = v; marcarVideo(v); if (v.aoVivo && v.videoId) telaVideo("vivo", v); }
+      }, 60000);
+    }
   }
 
   async function abrirVideo() {
@@ -537,17 +568,13 @@
       return;
     }
     if (document.body.dataset.player === "playing" || document.body.dataset.player === "loading") { retomarAposVideo = true; pausar(); }   // não tocar rádio e vídeo juntos
-    if (!idCanalYT()) {   // canal cadastrado como @nome: sem ID não dá para embutir
-      if (!ESTATICO && (!estadoVideo || Date.now() - (estadoVideo._t || 0) > 60000)) { try { const r = await fetch(API + "aovivo.php?t=" + Date.now()); estadoVideo = await r.json(); estadoVideo._t = Date.now(); } catch (e) {} }
-      if (estadoVideo && estadoVideo.videoId) return telaVideo("vivo", estadoVideo);
+    const v = await obterAoVivo();
+    if (v) { estadoVideo = v; marcarVideo(v); }
+    if (!idCanalYT()) {   // canal cadastrado como @nome: só dá para embutir quando sabemos o vídeo da live
+      if (estadoVideo && estadoVideo.aoVivo && estadoVideo.videoId) return telaVideo("vivo", estadoVideo);
       return modal(`<div class="rm-msg"><span class="rm-ico">📺</span><h3>Abrir o canal</h3><p>Para abrir o vídeo dentro do app, cadastre no painel o link do canal com o ID (youtube.com/channel/UC…).</p><a class="btn primary" href="${esc(canal)}/live" target="_blank" rel="noopener">Abrir no YouTube</a></div>`);
     }
-    if (!ESTATICO && (!estadoVideo || Date.now() - (estadoVideo._t || 0) > 60000)) {
-      try { const r = await fetch(API + "aovivo.php?t=" + Date.now()); estadoVideo = await r.json(); estadoVideo._t = Date.now(); marcarVideo(estadoVideo); } catch (e) {}
-    }
-    // com servidor sabemos se está ao vivo; sem servidor (GitHub Pages) abre a aba "Ao vivo" e o próprio YouTube informa
-    const sabeQueNaoEsta = estadoVideo && !estadoVideo.erro && estadoVideo.aoVivo === false;
-    telaVideo(sabeQueNaoEsta ? "videos" : "vivo", estadoVideo);
+    telaVideo("vivo", estadoVideo);
   }
 
   // ---------- notícias ----------

@@ -382,3 +382,10 @@ body.tv-mode .bnr-seta,body.tv-mode .bnr-pontos{display:none}
 .chip input:checked + span{background:#e5224a;border-color:#e5224a;color:#fff}
 .f.check{flex-direction:row;align-items:center;gap:8px}
 .bnr-status{margin:0}
+/* VEJA AO VIVO: aviso no lugar da tela de erro do YouTube */
+.rm-espera{aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;background:radial-gradient(circle at 70% 40%,#3a0f4a,#0d0d12 70%);color:#fff}
+.rm-espera h3{margin:0;font-size:1.25rem}
+.rm-espera p{margin:0;opacity:.75;max-width:420px;font-size:.92rem}
+.rm-espera .btn{margin-top:6px}
+.rm-pulso{width:18px;height:18px;border-radius:50%;background:#e5224a;box-shadow:0 0 0 0 rgba(229,34,74,.7);animation:rmPulso 1.6s infinite}
+@keyframes rmPulso{70%{box-shadow:0 0 0 18px rgba(229,34,74,0)}100%{box-shadow:0 0 0 0 rgba(229,34,74,0)}}

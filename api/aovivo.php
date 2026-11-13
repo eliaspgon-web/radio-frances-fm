@@ -16,7 +16,8 @@ function analisarLive(string $html): array {
     $aoVivo = $vid && (str_contains($html, '"isLiveNow":true') || str_contains($html, '"isLive":true') || str_contains($html, '\"isLiveNow\":true'));
     $titulo = null;
     if (preg_match('#<meta name="title" content="([^"]*)"#', $html, $t)) $titulo = html_entity_decode($t[1], ENT_QUOTES, 'UTF-8');
-    return ['aoVivo' => (bool)$aoVivo, 'videoId' => $aoVivo ? $vid : null, 'titulo' => $aoVivo ? $titulo : null];
+    $embed = !str_contains($html, '"playableInEmbed":false');
+    return ['aoVivo' => (bool)$aoVivo, 'videoId' => $aoVivo ? $vid : null, 'titulo' => $aoVivo ? $titulo : null, 'embed' => $aoVivo ? $embed : null];
 }
 
 if (PHP_SAPI === 'cli' && isset($argv[1])) { echo json_encode(analisarLive((string)file_get_contents($argv[1]))); exit; }

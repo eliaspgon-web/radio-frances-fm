@@ -1,0 +1,31 @@
+# Verifica a cada 5 minutos se o canal do YouTube está AO VIVO
+# e grava data/aovivo.json (o botão VEJA AO VIVO abre exatamente essa transmissão).
+name: Verificar ao vivo
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aovivo
+  cancel-in-progress: true
+
+jobs:
+  aovivo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/verificar_aovivo.py
+      - name: Salvar no repositório (se mudou)
+        run: |
+          git add data/aovivo.json 2>/dev/null || true
+          if git diff --cached --quiet; then echo "Sem mudança."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Status ao vivo atualizado automaticamente"
+          git pull --rebase -q && git push
