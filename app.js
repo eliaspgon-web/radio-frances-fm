@@ -169,6 +169,7 @@
     if (!("mediaSession" in navigator) || !atual) return;
     try {
       navigator.mediaSession.metadata = new MediaMetadata({ title: atual.nome, artist: atual.frequencia || "", album: config.site.nome || "" });
+      npChave = ""; // a música atual é aplicada de novo pelo "Tocando agora"
       navigator.mediaSession.setActionHandler("play", tocar);
       navigator.mediaSession.setActionHandler("pause", pausar);
       navigator.mediaSession.setActionHandler("nexttrack", () => pular(1));
@@ -185,6 +186,9 @@
     $$("[data-np=play]").forEach((b) => b.addEventListener("click", alternar));
     $$("[data-np=next]").forEach((b) => b.addEventListener("click", () => pular(1)));
     $$("[data-np=prev]").forEach((b) => b.addEventListener("click", () => pular(-1)));
+    // iPhone/iPad não deixam a página mudar o volume (só os botões do aparelho): detecta e avisa
+    const teste = new Audio(); try { teste.volume = 0.5; } catch (e) {}
+    if (teste.volume === 1) document.body.classList.add("vol-fixo");
     const vol = parseFloat(lsGet(LS_VOL) ?? "0.8");
     audio.volume = isNaN(vol) ? 0.8 : vol;
     $$("[data-np=vol]").forEach((v) => {
@@ -202,22 +206,74 @@
 
   // ---------- "Tocando agora" (música atual) ----------
   const mountDe = (r) => { const m = String((r && r.stream) || "").split("?")[0].split("/").pop().replace(/\.(aac|mp3|m3u8?|ogg)$/i, ""); return /^[A-Za-z0-9_]+$/.test(m) ? m : ""; };
-  async function atualizarTocando() {
-    const el = $$("[data-np=song]"); if (!el.length) return;
-    const r = atual, mount = mountDe(r);
-    let txt = "";
-    if (r && r.tocandoTexto) txt = r.tocandoTexto;
-    else if (!PREVIEW && mount) {
-      const base = (config.site && config.site.tocandoBase) || "https://francesfm.com.br/playing/";
-      for (const url of ESTATICO ? [base + mount] : [API + "tocando.php?mount=" + mount, "/playing/" + mount]) {
-        try { const x = await fetch(url, { cache: "no-store" }); if (x.ok) { const j = await x.json(); txt = String(j.text || "").replace(/\uFFFD|ï¿½/g, "").trim(); if (txt) break; } } catch (e) {}
-      }
-    }
-    el.forEach((e) => (e.textContent = txt || (r ? r.slogan || config.site.slogan || "" : "")));
-    document.body.classList.toggle("has-song", !!txt);
-    if (txt && "mediaSession" in navigator && navigator.mediaSession.metadata) { try { navigator.mediaSession.metadata.title = txt; navigator.mediaSession.metadata.artist = r.nome; } catch (e) {} }
+  // ---------- "Tocando agora": metadados do stream (RDS) ----------
+  // Fonte principal: serviço público da Triton/StreamTheWorld (o mesmo provedor do stream), lido direto pelo app.
+  // Os nomes vêm em maiúsculas e às vezes com acento quebrado; o catálogo do iTunes corrige a grafia e traz a capa.
+  const npCache = {};
+  let npChave = "";
+  const limparNp = (t) => String(t || "").replace(/^["'\s]+|["'\s]+$/g, "").replace(/�O/g, "ÃO").replace(/�/g, "").replace(/\s+/g, " ").trim();
+  const norm = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\(.*?\)|\[.*?\]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  const titleCase = (t) => t.toLowerCase().replace(/(^|\s|\()([a-zà-ú])/g, (m, a, b) => a + b.toUpperCase());
+
+  async function metaTriton(mount) {
+    const r = await fetch("https://np.tritondigital.com/public/nowplaying?mountName=" + encodeURIComponent(mount) + "&numberToFetch=1&eventType=track", { cache: "no-store" });
+    if (!r.ok) return null;
+    const d = new DOMParser().parseFromString(await r.text(), "application/xml");
+    const info = d.querySelector("nowplaying-info"); if (!info) return null;
+    const p = {}; info.querySelectorAll("property").forEach((x) => (p[x.getAttribute("name")] = x.textContent));
+    const titulo = limparNp(p.cue_title), artista = limparNp(p.track_artist_name);
+    return titulo || artista ? { titulo, artista } : null;
   }
-  setInterval(() => { if (!document.hidden) atualizarTocando(); }, 15000);
+
+  async function enriquecer(m) {   // grafia correta + capa do álbum (iTunes Search, com cache)
+    const k = norm(m.titulo) + "|" + norm(m.artista);
+    if (k in npCache) return npCache[k] || m;
+    npCache[k] = null;
+    const art = norm(m.artista).split(" ").filter((w) => w.length > 2).slice(0, 2).join(" ");
+    for (const termo of [m.titulo + " " + art, m.titulo]) {
+      try {
+        const r = await fetch("https://itunes.apple.com/search?entity=song&limit=8&country=BR&term=" + encodeURIComponent(termo));
+        const j = await r.json();
+        const alvoT = norm(m.titulo), alvoA = norm(m.artista).slice(0, 5);
+        const ok = (j.results || []).find((x) => { const t = norm(x.trackName); return (t === alvoT || t.startsWith(alvoT) || alvoT.startsWith(t)) && (!alvoA || norm(x.artistName).startsWith(alvoA) || norm(x.artistName).includes(alvoA)); });
+        if (ok) { npCache[k] = { titulo: ok.trackName.replace(/\s*\((Ao Vivo|Live)\)\s*$/i, ""), artista: ok.artistName, capa: (ok.artworkUrl100 || "").replace("100x100bb", "300x300bb") }; return npCache[k]; }
+      } catch (e) { break; }
+    }
+    npCache[k] = { titulo: titleCase(m.titulo), artista: titleCase(m.artista), capa: "" };
+    return npCache[k];
+  }
+
+  async function atualizarTocando() {
+    const r = atual, mount = mountDe(r);
+    let m = null;
+    if (r && r.tocandoTexto) m = { titulo: r.tocandoTexto, artista: "" };
+    else if (!PREVIEW && mount) {
+      try { m = await metaTriton(mount); } catch (e) {}
+      if (!m) {   // reserva: proxy PHP do app ou endpoint do site
+        const base = (config.site && config.site.tocandoBase) || "https://francesfm.com.br/playing/";
+        for (const url of ESTATICO ? [base + mount] : [API + "tocando.php?mount=" + mount, "/playing/" + mount]) {
+          try { const x = await fetch(url, { cache: "no-store" }); if (x.ok) { const j = await x.json(); const t = limparNp(j.text); if (t) { const [ti, ...ar] = t.split(/,\s*/); m = { titulo: ti, artista: ar.join(", ") }; break; } } } catch (e) {}
+        }
+      }
+      if (m && m.titulo) m = await enriquecer(m);
+    }
+    if (atual !== r) return;                       // trocou de rádio durante a busca
+    const chave = m ? m.titulo + "|" + m.artista : "";
+    const texto = m ? [m.titulo, m.artista].filter(Boolean).join(" — ") : "";
+    $$("[data-np=song]").forEach((e) => (e.textContent = texto || (r ? r.slogan || config.site.slogan || "" : "")));
+    $$("[data-np=track]").forEach((e) => (e.textContent = m ? m.titulo : (config.site.slogan || "")));
+    $$("[data-np=artist]").forEach((e) => (e.textContent = m ? m.artista : ""));
+    $$("[data-np=cover]").forEach((e) => { e.innerHTML = m && m.capa ? `<img src="${esc(m.capa)}" alt="Capa: ${esc(m.titulo)}">` : ""; e.classList.toggle("on", !!(m && m.capa)); });
+    document.body.classList.toggle("has-song", !!texto);
+    if (chave !== npChave && "mediaSession" in navigator && r) {   // tela de bloqueio / central de controle
+      npChave = chave;
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: m ? m.titulo : r.nome, artist: m ? m.artista || r.nome : (r.frequencia || ""), album: r.nome,
+          artwork: m && m.capa ? [{ src: m.capa, sizes: "300x300", type: "image/jpeg" }] : [{ src: "assets/icons/icon-512.png", sizes: "512x512", type: "image/png" }] });
+      } catch (e) {}
+    }
+  }
+  setInterval(() => { if (!document.hidden) atualizarTocando(); }, 20000);
 
   // ---------- prévia: o visualizador do claude.ai bloqueia áudio externo ----------
   // Em vez de um botão que "não faz nada", oferece links reais para ouvir cada rádio.
@@ -258,26 +314,42 @@
     return m;
   }
 
+  const idCanalYT = () => { const m = String((config.site && config.site.youtube) || "").match(/UC[\w-]{22}/); return m ? m[0] : ""; };
+
+  function telaVideo(ativa, vivo) {
+    const id = idCanalYT(), canal = urlCanal();
+    const src = {
+      vivo: vivo && vivo.videoId ? `https://www.youtube.com/embed/${encodeURIComponent(vivo.videoId)}?autoplay=1&rel=0&playsinline=1` : `https://www.youtube.com/embed/live_stream?channel=${id}&autoplay=1&rel=0&playsinline=1`,
+      videos: `https://www.youtube.com/embed/videoseries?list=UU${id.slice(2)}&rel=0&playsinline=1`,
+    };
+    const m = modal(`
+      <div class="rm-tabs"><button data-v="vivo" class="${ativa === "vivo" ? "on" : ""}">🔴 Ao vivo</button><button data-v="videos" class="${ativa === "videos" ? "on" : ""}">▶ Últimos vídeos</button></div>
+      <div class="rm-video"><iframe src="${src[ativa]}" title="YouTube" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+      <div class="rm-info">${ativa === "vivo" ? `<span class="live-pill">● AO VIVO</span><strong>${esc((vivo && vivo.titulo) || "Transmissão ao vivo")}</strong>` : `<strong>Vídeos do canal</strong>`}
+        <small class="rm-dica">${ativa === "vivo" && !(vivo && vivo.aoVivo) ? "Se aparecer “vídeo indisponível”, o canal não está ao vivo agora — veja os últimos vídeos." : ""}</small>
+        <a href="${esc(canal)}${ativa === "vivo" ? "/live" : "/videos"}" target="_blank" rel="noopener">Abrir no YouTube ↗</a></div>`, "video");
+    $$("[data-v]", m).forEach((b) => (b.onclick = () => telaVideo(b.dataset.v, vivo)));
+  }
+
   async function abrirVideo() {
     const canal = urlCanal();
     if (!canal) return toast("Canal do YouTube não cadastrado no painel");
     if (PREVIEW) {
-      modal(`<div class="rm-msg"><span class="rm-ico">📺</span><h3>Transmissão ao vivo</h3><p>Com o app hospedado, o VEJA verifica se o canal está ao vivo e abre o vídeo aqui dentro, pausando a rádio.</p><a class="btn primary" href="${esc(canal)}/live" target="_blank" rel="noopener">Abrir canal no YouTube</a></div>`);
+      modal(`<div class="rm-msg"><span class="rm-ico">📺</span><h3>Transmissão ao vivo</h3><p>Nesta prévia o claude.ai bloqueia vídeos de outros sites. No app publicado, o vídeo ao vivo e os últimos vídeos abrem aqui dentro, sem sair do app.</p><a class="btn primary" href="${esc(canal)}/live" target="_blank" rel="noopener">Abrir canal no YouTube</a></div>`);
       return;
     }
-    modal(`<div class="rm-msg"><span class="rm-ico spin">⟳</span><p>Procurando transmissão ao vivo…</p></div>`);
-    if (!estadoVideo || Date.now() - (estadoVideo._t || 0) > 60000) {
-      try { const r = await fetch(API + "aovivo.php?t=" + Date.now()); estadoVideo = await r.json(); estadoVideo._t = Date.now(); marcarVideo(estadoVideo); } catch (e) { estadoVideo = null; }
+    if (document.body.dataset.player === "playing") pausar();   // não tocar rádio e vídeo juntos
+    if (!idCanalYT()) {   // canal cadastrado como @nome: sem ID não dá para embutir
+      if (!ESTATICO && (!estadoVideo || Date.now() - (estadoVideo._t || 0) > 60000)) { try { const r = await fetch(API + "aovivo.php?t=" + Date.now()); estadoVideo = await r.json(); estadoVideo._t = Date.now(); } catch (e) {} }
+      if (estadoVideo && estadoVideo.videoId) return telaVideo("vivo", estadoVideo);
+      return modal(`<div class="rm-msg"><span class="rm-ico">📺</span><h3>Abrir o canal</h3><p>Para abrir o vídeo dentro do app, cadastre no painel o link do canal com o ID (youtube.com/channel/UC…).</p><a class="btn primary" href="${esc(canal)}/live" target="_blank" rel="noopener">Abrir no YouTube</a></div>`);
     }
-    if (estadoVideo && estadoVideo.aoVivo && estadoVideo.videoId) {
-      if (document.body.dataset.player === "playing") pausar();
-      modal(`<div class="rm-video"><iframe src="https://www.youtube.com/embed/${esc(estadoVideo.videoId)}?autoplay=1&rel=0&playsinline=1" title="Transmissão ao vivo" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
-        <div class="rm-info"><span class="live-pill">● AO VIVO</span><strong>${esc(estadoVideo.titulo || "Transmissão ao vivo")}</strong><a href="https://www.youtube.com/watch?v=${esc(estadoVideo.videoId)}" target="_blank" rel="noopener">Abrir no YouTube ↗</a></div>`, "video");
-    } else if (estadoVideo && !estadoVideo.erro) {
-      modal(`<div class="rm-msg"><span class="rm-ico">📺</span><h3>Nenhuma transmissão ao vivo agora</h3><p>Assim que entrarmos ao vivo, o vídeo aparece aqui. Enquanto isso, veja os vídeos do canal.</p><a class="btn primary" href="${esc(canal)}/videos" target="_blank" rel="noopener">Ver vídeos do canal</a></div>`);
-    } else {
-      modal(`<div class="rm-msg"><span class="rm-ico">📺</span><h3>Abrir o canal</h3><p>Não foi possível verificar a transmissão agora.</p><a class="btn primary" href="${esc(canal)}/live" target="_blank" rel="noopener">Abrir no YouTube</a></div>`);
+    if (!ESTATICO && (!estadoVideo || Date.now() - (estadoVideo._t || 0) > 60000)) {
+      try { const r = await fetch(API + "aovivo.php?t=" + Date.now()); estadoVideo = await r.json(); estadoVideo._t = Date.now(); marcarVideo(estadoVideo); } catch (e) {}
     }
+    // com servidor sabemos se está ao vivo; sem servidor (GitHub Pages) abre a aba "Ao vivo" e o próprio YouTube informa
+    const sabeQueNaoEsta = estadoVideo && !estadoVideo.erro && estadoVideo.aoVivo === false;
+    telaVideo(sabeQueNaoEsta ? "videos" : "vivo", estadoVideo);
   }
 
   // ---------- notícias ----------

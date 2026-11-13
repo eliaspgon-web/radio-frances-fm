@@ -203,6 +203,12 @@ body[data-player=playing] .tab-play::before{content:"";position:absolute;inset:-
 .ios-tip.show{display:block}
 .ios-tip b{display:block;margin-bottom:4px}
 .ios-tip button{position:absolute;right:8px;top:6px;border:0;background:none;font-size:1.2rem}
+.np-line{display:flex;align-items:center;gap:12px;text-align:left;margin:2px 0}
+.np-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.now .np-txt strong{text-transform:none;font-size:1.05rem;letter-spacing:0}
+.np-artist{font-size:.9rem;color:var(--txt2);font-weight:600}
+.np-artist:empty{display:none}
+@media (max-width:1023px){body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}.np-line{justify-content:center}}
 </style>
 </head>
 <body data-player="idle">
@@ -238,7 +244,7 @@ body[data-player=playing] .tab-play::before{content:"";position:absolute;inset:-
           <div class="now">
             <span class="freq"><span data-np="freq"></span></span>
             <small>Tocando agora <span class="np-eq"><i></i><i></i><i></i></span></small>
-            <strong data-np="song"></strong>
+            <div class="np-line"><span class="np-cover" data-np="cover"></span><span class="np-txt"><strong data-np="track"></strong><span class="np-artist" data-np="artist"></span></span></div>
             <span class="station-name" data-np="name"></span>
             <span class="status" data-np="status"></span>
           </div>

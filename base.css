@@ -228,3 +228,21 @@ body[data-player=playing] .station.active .station-eq{display:inline-flex}
 .nk-brand::before{content:"";position:absolute;width:62%;aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,255,255,.35);box-shadow:0 0 0 18px rgba(255,255,255,.06),0 0 0 40px rgba(255,255,255,.04)}
 .nk-img::after{z-index:2}
 .nk-img>span,.nk-img>b,.nk-img>.nk-play{z-index:3}
+
+/* ===== Vídeo dentro do app (abas Ao vivo / Últimos vídeos) ===== */
+.rm-tabs{display:flex;gap:6px;padding:10px 54px 10px 12px;background:#0b0f17}
+.rm-tabs button{border:0;border-radius:99px;padding:8px 14px;font-weight:700;font-size:.85rem;background:#1b2130;color:#c9cfdd}
+.rm-tabs button.on{background:#fff;color:#0b0f17}
+.rm-dica{flex-basis:100%;color:#9fb3c8;font-size:.78rem}
+.rm-dica:empty{display:none}
+
+/* ===== Volume ===== */
+input[type=range][data-np=vol]{height:28px;cursor:pointer;touch-action:none}
+body.vol-fixo [data-np=vol]{display:none}
+body.vol-fixo .vol::after{content:"Volume nos botões do celular";font-size:.72rem;white-space:nowrap}
+body.vol-fixo .vol>span{display:none}
+
+/* ===== Capa da música tocando ===== */
+.np-cover{display:none;width:64px;height:64px;flex:0 0 64px;border-radius:10px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.np-cover.on{display:block}
+.np-cover img{width:100%;height:100%;object-fit:cover}
