@@ -71,11 +71,11 @@
   "contato": [
     {
       "id": "musica",
-      "tipo": "Peça sua música",
+      "tipo": "Peça sua música e mande seu alô",
       "icone": "🎵",
       "numero": "",
-      "descricao": "Peça pelo WhatsApp",
-      "mensagem": "Olá, {radio}! Quero pedir uma música: ",
+      "descricao": "Pedidos e recados pelo WhatsApp",
+      "mensagem": "Olá, {radio}! Quero pedir uma música / mandar um alô: ",
       "ativo": true,
       "atalho": true,
       "iconeImg": "assets/atalhos/peca-sua-musica-branca.png"
@@ -87,8 +87,8 @@
       "numero": "",
       "descricao": "Recado no ar",
       "mensagem": "Olá, {radio}! Quero mandar um alô para: ",
-      "ativo": true,
-      "atalho": true,
+      "ativo": false,
+      "atalho": false,
       "iconeImg": "assets/atalhos/mande-seu-alo-branca.png"
     },
     {
@@ -126,5 +126,84 @@
     ],
     "manuais": [],
     "modo": "rss"
+  },
+  "banners": {
+    "ativo": true,
+    "posicao": "apos-player",
+    "formato": "3:1",
+    "formatoCelular": "",
+    "intervalo": 6,
+    "transicao": "deslizar",
+    "velocidade": 600,
+    "autoplay": true,
+    "pausarInteracao": true,
+    "setas": true,
+    "pontos": true,
+    "ajuste": "cobrir",
+    "raio": 16,
+    "largura": "conteudo",
+    "embaralhar": false,
+    "maxItens": 0,
+    "contarMetricas": true,
+    "itens": [
+      {
+        "id": "exrede",
+        "titulo": "Exemplo: Rede Francês FM",
+        "imagem": "assets/banners/exemplo-rede.jpg",
+        "imagemCelular": "",
+        "alt": "Rede Francês FM: 5 cidades no ar",
+        "legenda": "",
+        "corFundo": "#000000",
+        "acao": "nenhuma",
+        "link": "",
+        "whatsapp": "",
+        "mensagem": "",
+        "radio": "",
+        "novaAba": true,
+        "duracao": 0,
+        "prioridade": 0,
+        "inicio": "",
+        "fim": "",
+        "dias": [],
+        "horaIni": "",
+        "horaFim": "",
+        "radios": [],
+        "dispositivos": {
+          "celular": true,
+          "computador": true,
+          "tv": true
+        },
+        "ativo": true
+      },
+      {
+        "id": "expedido",
+        "titulo": "Exemplo: Peça sua música",
+        "imagem": "assets/banners/exemplo-pedido.jpg",
+        "imagemCelular": "",
+        "alt": "Peça sua música e mande seu alô pelo WhatsApp",
+        "legenda": "",
+        "corFundo": "#000000",
+        "acao": "nenhuma",
+        "link": "",
+        "whatsapp": "",
+        "mensagem": "",
+        "radio": "",
+        "novaAba": true,
+        "duracao": 0,
+        "prioridade": 0,
+        "inicio": "",
+        "fim": "",
+        "dias": [],
+        "horaIni": "",
+        "horaFim": "",
+        "radios": [],
+        "dispositivos": {
+          "celular": true,
+          "computador": true,
+          "tv": true
+        },
+        "ativo": true
+      }
+    ]
   }
 }

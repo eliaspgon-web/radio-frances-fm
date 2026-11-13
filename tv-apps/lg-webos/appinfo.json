@@ -1,0 +1,14 @@
+{
+  "id": "br.com.francesfm.radio",
+  "version": "1.0.0",
+  "vendor": "Rede Francês FM",
+  "type": "web",
+  "main": "index.html",
+  "title": "Francês FM",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "bgColor": "#0b0b0f",
+  "iconColor": "#0b0b0f"
+}

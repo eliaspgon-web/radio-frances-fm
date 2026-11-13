@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, initial-scale=1">
+<title>Rede Francês FM — TV</title>
+<meta name="theme-color" content="#0b0b0f">
+<link rel="manifest" href="manifest-tv.webmanifest">
+<link rel="icon" href="assets/site/icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="base.css">
+<style>
+/* Versão TV: tela de 1920x1080, controle remoto (setas + OK). Usa o mesmo motor do app (app.js). */
+:root{--tv-a:#ff6a1a;--tv-b:#e5224a}
+html,body{margin:0;height:100%;overflow:hidden;max-width:100vw;background:#0b0b0f;color:#fff;font-family:Inter,system-ui,sans-serif}
+body{zoom:var(--tvzoom,1)}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:var(--bg-photo,none) 100% center/cover no-repeat;opacity:.35}
+body::after{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(900px 700px at 15% 30%,rgba(229,34,74,.35),transparent 70%),linear-gradient(90deg,#0b0b0f 35%,rgba(11,11,15,.6))}
+.tvw{display:grid;grid-template-columns:720px minmax(0,1fr);gap:60px;height:100vh;padding:60px 80px;box-sizing:border-box}
+.tvw-top{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;height:70px}
+.tvw-top [data-site=logo] img,.tvw-top [data-site=logo] svg{height:58px;width:auto}
+.tvw-clock{font-size:34px;font-weight:700;opacity:.85}
+.tvnp{display:flex;flex-direction:column;justify-content:center;gap:26px}
+.tvnp .np-cover{width:300px;height:300px;border-radius:28px;overflow:hidden;background:#1a1a22;display:block;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.tvnp .np-cover img{width:100%;height:100%;object-fit:cover}
+.tvnp .np-cover.bola{background:#fff1;padding:40px;box-sizing:border-box}.tvnp .np-cover.bola img{object-fit:contain}
+.tvnp .np-cover:not(.on){display:none}
+.tvnp-radio{font-size:30px;font-weight:600;color:#ffb38a}
+.tvnp-track{font-size:58px;font-weight:900;line-height:1.05;max-width:740px}
+.tvnp-artist{font-size:36px;font-weight:600;opacity:.8}
+.tvnp-status{font-size:26px;opacity:.65;letter-spacing:.06em;text-transform:uppercase}
+.tvnp-ctrl{display:flex;gap:26px;align-items:center;margin-top:10px}
+.tvbtn{border:0;border-radius:999px;color:#fff;font:800 30px Inter,system-ui,sans-serif;background:#ffffff1a;height:96px;padding:0 44px;display:flex;align-items:center;gap:18px;cursor:pointer;outline:none;transition:transform .15s,box-shadow .15s,background .15s}
+.tvbtn.play{width:150px;height:150px;padding:0;justify-content:center;background:linear-gradient(135deg,var(--tv-a),var(--tv-b));font-size:60px}
+body[data-player=playing] .tvbtn.play .i-play,body:not([data-player=playing]) .tvbtn.play .i-pause{display:none}
+.tvbtn.mute{width:96px;padding:0;justify-content:center;font-size:40px}
+.tvlista{display:flex;flex-direction:column;min-height:0;min-width:0}
+.t.tvlista h2{font-size:32px;margin:0 0 18px;letter-spacing:.04em}
+.tvlista [data-stations]{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;overflow:auto;padding:14px;margin:-14px;scrollbar-width:none}
+.tvlista .station{display:flex;align-items:center;gap:24px;min-height:124px;padding:14px 28px;border-radius:26px;border:3px solid transparent;background:#ffffff12;color:#fff;text-align:left;cursor:pointer;outline:none;transition:transform .15s,box-shadow .15s,border-color .15s}
+.tvlista .station-logo{width:84px;height:84px;flex:none}.tvlista .station-logo img{width:100%;height:100%;object-fit:contain}
+.tvlista .station-info{min-width:0}.tvlista .station-info strong{display:block;font-size:30px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tvlista .station-info small{display:block;font-size:24px;opacity:.75;margin-top:6px}
+.tvlista .station-state{margin-left:auto;font-size:24px;font-weight:800}
+.tvlista .station .st-on{display:none;color:#ffb38a}.tvlista .station.active .st-on{display:inline}.tvlista .station.active .st-play{display:none}
+.tvlista .station.active{background:linear-gradient(135deg,#ff6a1a33,#e5224a33)}
+/* foco do controle remoto: bem visível de longe */
+.tvw :focus{transform:scale(1.03);box-shadow:0 0 0 6px #fff,0 18px 50px rgba(0,0,0,.6);border-color:#fff}
+.tvdica{position:fixed;left:80px;bottom:34px;font-size:24px;opacity:.55}
+.tvdica b{border:2px solid #fff6;border-radius:8px;padding:2px 10px;margin:0 4px}
+/* esconde do motor o que a TV não usa */
+.wa-fab,#wa-fab,.fab,[data-fab],#toque-ouvir{display:none!important}
+.tvw{width:100vw;max-width:1920px}
+.station-eq{display:none}
+</style>
+</head>
+<body class="tv-mode" data-player="paused">
+<div class="tvw">
+  <div class="tvw-top"><span data-site="logo"></span><span class="tvw-clock" id="relogio"></span></div>
+  <section class="tvnp" aria-label="Tocando agora">
+    <span class="np-cover" data-np="cover"></span>
+    <div class="tvnp-radio"><span data-np="name"></span> · <span data-np="freq"></span></div>
+    <div class="tvnp-track" data-np="track"></div>
+    <div class="tvnp-artist" data-np="artist"></div>
+    <div class="tvnp-status" data-np="status">Toque OK para ouvir</div>
+    <div class="tvnp-ctrl">
+      <button class="tvbtn play" data-np="play" aria-label="Tocar ou pausar"><span class="i-play">▶</span><span class="i-pause">❚❚</span></button>
+      <button class="tvbtn mute" data-np="mute" aria-label="Silenciar">🔈</button>
+      <button class="tvbtn" data-watch aria-label="Ver ao vivo no YouTube">📺 Ver ao vivo</button>
+    </div>
+  </section>
+  <section class="tvlista" aria-label="Rádios">
+    <h2>RÁDIOS AO VIVO</h2>
+    <div data-stations></div>
+  </section>
+</div>
+<div class="tvdica">Use <b>◀ ▶ ▲ ▼</b> para escolher e <b>OK</b> para ouvir</div>
+<script>
+window.RADIO_TV = true;
+(function () {
+  // Relógio
+  var rel = document.getElementById("relogio");
+  function hora() { var d = new Date(); rel.textContent = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+  hora(); setInterval(hora, 15000);
+  // Ajusta a tela de 1920 para qualquer TV (720p, 1080p, 4K)
+  function escala() { document.body.style.setProperty("--tvzoom", Math.min(innerWidth / 1920, innerHeight / 1080)); }
+  addEventListener("resize", escala); escala();
+
+  // Navegação pelo controle remoto (setas escolhem o item mais próximo naquela direção)
+  var focaveis = function () { return [].slice.call(document.querySelectorAll((document.querySelector("#ra-modal.open") ? "#ra-modal.open button" : ".tvw button:not([hidden])"))).filter(function (e) { return e.offsetParent; }); };
+  function centro(e) { var r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+  function mover(dir) {
+    var at = document.activeElement, itens = focaveis();
+    if (!at || itens.indexOf(at) < 0) { var ativo = document.querySelector(".station.active") || itens[0]; if (ativo) ativo.focus({ preventScroll: true }); return; }
+    var c = centro(at), melhor = null, nota = Infinity;
+    itens.forEach(function (e) {
+      if (e === at) return;
+      var p = centro(e), dx = p.x - c.x, dy = p.y - c.y;
+      var ok = dir === "L" ? dx < -10 : dir === "R" ? dx > 10 : dir === "U" ? dy < -10 : dy > 10;
+      if (!ok) return;
+      var principal = dir === "L" || dir === "R" ? Math.abs(dx) : Math.abs(dy);
+      var lateral = dir === "L" || dir === "R" ? Math.abs(dy) : Math.abs(dx);
+      var n = principal + lateral * 2.2;
+      if (n < nota) { nota = n; melhor = e; }
+    });
+    if (melhor) { melhor.focus({ preventScroll: true }); rolarLista(melhor); }
+  }
+  // rola só a lista de rádios (nunca a tela inteira para os lados)
+  function rolarLista(el) {
+    var box = el.closest("[data-stations]"); if (!box) return;
+    var r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+    if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom + 20; else if (r.top < b.top) box.scrollTop -= b.top - r.top + 20;
+  }
+  addEventListener("scroll", function () { if (scrollX || scrollY) scrollTo(0, 0); });
+  var teclas = { 37: "L", 38: "U", 39: "R", 40: "D" };
+  addEventListener("keydown", function (e) {
+    var k = e.keyCode;
+    if (teclas[k]) { e.preventDefault(); mover(teclas[k]); return; }
+    // Teclas de mídia do controle (Samsung/LG/Android TV)
+    var play = document.querySelector("[data-np=play]");
+    if (k === 415 || k === 10252 || k === 179 || e.key === "MediaPlayPause" || e.key === "MediaPlay" || e.key === "MediaPause" || k === 19) { e.preventDefault(); play && play.click(); return; }
+    if (k === 413 || e.key === "MediaStop") { if (document.body.dataset.player === "playing") play && play.click(); return; }
+    // Voltar: fecha o vídeo se aberto; na tela inicial deixa a TV sair do app
+    if (k === 461 || k === 10009 || k === 27 || e.key === "GoBack" || e.key === "BrowserBack") {
+      var m = document.getElementById("ra-modal");
+      if (m && m.classList.contains("open") && m._fechar) { e.preventDefault(); m._fechar(); return; }
+      try { if (window.tizen) tizen.application.getCurrentApplication().exit(); else if (window.webOS && webOS.platformBack) webOS.platformBack(); } catch (x) {}
+    }
+  });
+  // Tizen: pede as teclas de mídia do controle
+  try { if (window.tizen && tizen.tvinputdevice) ["MediaPlayPause", "MediaPlay", "MediaPause", "MediaStop"].forEach(function (k) { tizen.tvinputdevice.registerKey(k); }); } catch (x) {}
+  // Foco inicial na rádio tocando (espera o motor montar a lista)
+  var tentativa = 0, t = setInterval(function () {
+    var a = document.querySelector(".station.active") || document.querySelector(".station");
+    if (a || ++tentativa > 40) { clearInterval(t); if (a) a.focus({ preventScroll: true }); }
+  }, 250);
+})();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

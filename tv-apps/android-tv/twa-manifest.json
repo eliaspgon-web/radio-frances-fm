@@ -1,0 +1,21 @@
+{
+  "packageId": "br.com.francesfm.radio.tv",
+  "host": "eliaspgon-web.github.io",
+  "name": "Francês FM",
+  "launcherName": "Francês FM",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "themeColor": "#0b0b0f",
+  "navigationColor": "#0b0b0f",
+  "backgroundColor": "#0b0b0f",
+  "startUrl": "/radio-frances-fm/tv.html",
+  "iconUrl": "https://eliaspgon-web.github.io/radio-frances-fm/assets/icons/icon-512.png",
+  "maskableIconUrl": "https://eliaspgon-web.github.io/radio-frances-fm/assets/icons/maskable-512.png",
+  "webManifestUrl": "https://eliaspgon-web.github.io/radio-frances-fm/manifest-tv.webmanifest",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "enableNotifications": false,
+  "isChromeOSOnly": false,
+  "fallbackType": "customtabs",
+  "features": {}
+}

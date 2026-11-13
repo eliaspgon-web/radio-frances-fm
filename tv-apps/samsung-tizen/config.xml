@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Samsung Smart TV (Tizen) — app hospedado: abre a versão TV publicada -->
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://eliaspgon-web.github.io/radio-frances-fm/tv.html" version="1.0.0" viewmodes="maximized">
+  <tizen:application id="FrancesFM0.RadioTV" package="FrancesFM0" required_version="5.0"/>
+  <content src="https://eliaspgon-web.github.io/radio-frances-fm/tv.html"/>
+  <access origin="*" subdomains="true"/>
+  <tizen:allow-navigation>*</tizen:allow-navigation>
+  <tizen:content-security-policy>default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; media-src * blob:</tizen:content-security-policy>
+  <icon src="icon.png"/>
+  <name>Francês FM</name>
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="enable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+  <tizen:profile name="tv-samsung"/>
+</widget>

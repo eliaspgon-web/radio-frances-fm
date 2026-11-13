@@ -17,7 +17,8 @@ function db(): PDO {
       CREATE INDEX IF NOT EXISTS ix_m_dia ON minutos(dia);
       CREATE TABLE IF NOT EXISTS ouvido (dia TEXT, radio TEXT, segundos INT, PRIMARY KEY (dia, radio));
       CREATE TABLE IF NOT EXISTS sessao_radio (sid TEXT, radio TEXT, did TEXT, dia TEXT, ouviu INT DEFAULT 0, PRIMARY KEY (sid, radio));
-      CREATE INDEX IF NOT EXISTS ix_sr ON sessao_radio(radio, dia);');
+      CREATE INDEX IF NOT EXISTS ix_sr ON sessao_radio(radio, dia);
+      CREATE TABLE IF NOT EXISTS banner_ev (dia TEXT, banner TEXT, exibicoes INT DEFAULT 0, cliques INT DEFAULT 0, PRIMARY KEY (dia, banner));');
     return $pdo;
 }
 function agoraContagem(PDO $db, int $t): array {
@@ -39,6 +40,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $b = corpoJson() ?: json_decode((string)($_POST['d'] ?? ''), true) ?: [];
     $did = $id($b['did'] ?? ''); $sid = $id($b['sid'] ?? '');
     if (!$did || !$sid) responder(['ok' => false], 400);
+    // exibição/clique de banner
+    if (isset($b['banner'])) {
+        $bid = preg_replace('/[^a-z0-9_-]/i', '', (string)$b['banner']);
+        $col = ($b['evento'] ?? '') === 'clique' ? 'cliques' : 'exibicoes';
+        if ($bid !== '') {
+            $db = db(); $dia = date('Y-m-d');
+            $db->prepare("INSERT INTO banner_ev (dia, banner, $col) VALUES (?, ?, 1) ON CONFLICT(dia, banner) DO UPDATE SET $col = $col + 1")->execute([$dia, $bid]);
+        }
+        responder(['ok' => true]);
+    }
     $radio = preg_replace('/[^a-z0-9_-]/i', '', (string)($b['radio'] ?? '')) ?: '-';
     $plat = in_array($b['plataforma'] ?? '', ['iphone', 'android', 'computador', 'outro'], true) ? $b['plataforma'] : 'outro';
     $toca = !empty($b['tocando']) ? 1 : 0; $app = !empty($b['app']) ? 1 : 0;
@@ -73,6 +84,14 @@ exigir();
 $db = db(); $t = time();
 $acao = $_GET['acao'] ?? 'agora';
 
+if ($acao === 'banners') {
+    exigir();
+    $de = date('Y-m-d', time() - 29 * 86400);
+    $q = db()->prepare('SELECT banner, SUM(exibicoes) e, SUM(cliques) c FROM banner_ev WHERE dia >= ? GROUP BY banner');
+    $q->execute([$de]); $out = [];
+    foreach ($q as $r) $out[$r['banner']] = ['exibicoes' => (int)$r['e'], 'cliques' => (int)$r['c']];
+    responder(['banners' => $out]);
+}
 if ($acao === 'agora') {
     $c = agoraContagem($db, $t);
     $q = $db->prepare('SELECT minuto, conectados, ouvintes FROM minutos WHERE minuto >= ? ORDER BY minuto');

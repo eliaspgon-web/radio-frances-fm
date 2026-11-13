@@ -172,6 +172,7 @@
     lsSet(LS_LAST, r.id);
     renderAgora();
     renderContato(); // a mensagem do WhatsApp cita a rádio atual
+    if (config.banners && (config.banners.itens || []).some((x) => x.radios && x.radios.length)) renderBanners();   // banners por rádio
     atualizarTocando();
     querTocar = false; clearTimeout(vigia);
     audio.pause();
@@ -361,6 +362,17 @@
     }));
     pintarMudo();
     $$("[data-open-admin]").forEach((b) => b.addEventListener("click", () => { $$(".sheet.open").forEach((x) => x.classList.remove("open")); abrirAdmin(); }));
+    // Acesso ao painel escondido do ouvinte: só para quem usa #admin / ?admin, já está logado, ou toca 5x na logo
+    const LS_ADM = "radioapp.admVisivel";
+    const mostrarAdm = () => { document.body.classList.add("modo-adm"); lsSet(LS_ADM, "1"); };
+    if (location.hash === "#admin" || /[?&]admin\b/.test(location.search) || lsGet(LS_ADM) === "1" || lsGet(LS_SES) || sessionStorage.getItem(LS_SES)) document.body.classList.add("modo-adm");
+    window.__mostrarAdm = mostrarAdm;
+    let toquesLogo = 0, tLogo = null;
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest || !e.target.closest(".h-logo, .brand, .logo, [data-site=logo]")) return;
+      toquesLogo++; clearTimeout(tLogo); tLogo = setTimeout(() => (toquesLogo = 0), 2500);
+      if (toquesLogo >= 5) { e.preventDefault(); toquesLogo = 0; mostrarAdm(); abrirAdmin(); }
+    });
     $$("[data-toggle]").forEach((b) => b.addEventListener("click", () => { const t = $(b.dataset.toggle); if (t) t.classList.toggle("open"); }));
     $$(".sheet").forEach((sh) => sh.addEventListener("click", (e) => { if (e.target === sh || e.target.closest("[data-close-sheet]")) sh.classList.remove("open"); }));
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $$(".sheet.open").forEach((x) => x.classList.remove("open")); const m = $("#ra-modal.open"); if (m && m._fechar) m._fechar(); } });
@@ -782,7 +794,7 @@
           </div>
         </header>
         <nav class="adm-tabs">
-          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["aparencia", "🎨 Aparência"], ["audiencia", "📊 Audiência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
+          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["banners", "🖼 Banners"], ["aparencia", "🎨 Aparência"], ["audiencia", "📊 Audiência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
         </nav>
         <section class="adm-body"></section>
       </div>`;
@@ -793,7 +805,7 @@
     $("[data-act=import]", ov).onclick = importar;
     $("[data-act=sair]", ov).onclick = sair;
     if (aba === "usuarios" && !ehAdmin()) aba = "radios";
-    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, aparencia: abaAparencia, audiencia: abaAudiencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
+    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, banners: abaBanners, aparencia: abaAparencia, audiencia: abaAudiencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
   }
 
   // ----- aba Contato / WhatsApp -----
@@ -1056,6 +1068,236 @@
       $("[data-igtest]", body).onclick = async () => { out.textContent = "Testando…"; out.className = "test-out"; const j = await api({ acao: "testar" }); out.textContent = j.ok ? `✓ ${j.posts} posts encontrados. Último: “${j.exemplo || ""}”` : "✗ " + (j.erro || "falhou"); out.className = "test-out " + (j.ok ? "ok" : "err"); };
       $("[data-igdel]", body).onclick = async () => { pintar(await api({ acao: "salvar", remover: true })); toast("Instagram desconectado"); };
     }
+  }
+
+  // =====================================================================
+  // BANNERS — carrossel de propaganda/destaques, todo configurável no painel
+  // =====================================================================
+  const BNR_POS = [["topo", "Topo da página (antes do player)"], ["apos-player", "Logo abaixo do player"], ["apos-radios", "Depois da lista de rádios"], ["apos-atalhos", "Depois do atalho do WhatsApp"], ["apos-noticias", "Depois das notícias"], ["rodape", "Final da página"]];
+  const BNR_FMT = [["16:9", "16:9 · vídeo/TV (1920×1080)"], ["21:9", "21:9 · ultra largo (2100×900)"], ["4:1", "4:1 · faixa (1600×400)"], ["3:1", "3:1 · banner (1500×500)"], ["2:1", "2:1 · destaque (1200×600)"], ["4:3", "4:3 · (1200×900)"], ["1:1", "1:1 · quadrado (1080×1080)"], ["4:5", "4:5 · retrato (1080×1350)"], ["9:16", "9:16 · story (1080×1920)"]];
+  const BNR_DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const bnrPadrao = () => ({ ativo: true, posicao: "apos-player", formato: "3:1", formatoCelular: "", intervalo: 6, transicao: "deslizar", velocidade: 600, autoplay: true, pausarInteracao: true, setas: true, pontos: true, ajuste: "cobrir", raio: 16, largura: "conteudo", embaralhar: false, maxItens: 0, contarMetricas: true, itens: [] });
+  const bnrNovo = () => ({ id: uid(), titulo: "", imagem: "", imagemCelular: "", alt: "", legenda: "", corFundo: "#000000", acao: "link", link: "", whatsapp: "", mensagem: "", radio: "", novaAba: true, duracao: 0, prioridade: 0, inicio: "", fim: "", dias: [], horaIni: "", horaFim: "", radios: [], dispositivos: { celular: true, computador: true, tv: true }, ativo: true });
+  const proporcao = (f) => (String(f || "3:1").split(":").map(Number).filter(Boolean).join("/") || "3/1");
+  const dispositivoAtual = () => (window.RADIO_TV ? "tv" : matchMedia("(max-width:760px)").matches ? "celular" : "computador");
+  const minutos = (h) => { if (!/^\d{1,2}:\d{2}/.test(String(h || ""))) return null; const [a, b] = String(h).split(":").map(Number); return a * 60 + b; };
+
+  function bannersVisiveis() {
+    const b = config.banners; if (!b || !b.ativo) return [];
+    const agora = new Date(), hm = agora.getHours() * 60 + agora.getMinutes(), dev = dispositivoAtual();
+    let l = (b.itens || []).filter((x) => {
+      if (x.ativo === false || !safeUrl(x.imagem || x.imagemCelular)) return false;
+      if (x.inicio && new Date(x.inicio) > agora) return false;               // ainda não começou
+      if (x.fim && new Date(x.fim) < agora) return false;                     // campanha encerrada
+      if (x.dias && x.dias.length && !x.dias.includes(agora.getDay())) return false;
+      const hi = minutos(x.horaIni), hf = minutos(x.horaFim);
+      if (hi !== null && hf !== null) { const dentro = hi <= hf ? hm >= hi && hm < hf : hm >= hi || hm < hf; if (!dentro) return false; }
+      if (x.radios && x.radios.length && !(atual && x.radios.includes(atual.id))) return false;
+      if (x.dispositivos && x.dispositivos[dev] === false) return false;
+      return true;
+    });
+    l = l.map((x, i) => ({ x, i, r: b.embaralhar ? Math.random() : 0 })).sort((p, q) => (q.x.prioridade || 0) - (p.x.prioridade || 0) || p.r - q.r || p.i - q.i).map((o) => o.x);
+    if (+b.maxItens > 0) l = l.slice(0, +b.maxItens);
+    return l;
+  }
+
+  const bnrVistos = new Set();
+  function eventoBanner(id, tipo) {
+    if (PREVIEW || ESTATICO || !config.banners || config.banners.contarMetricas === false) return;
+    if (tipo === "exibicao") { if (bnrVistos.has(id)) return; bnrVistos.add(id); }
+    try { fetch(API + "audiencia.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ did: DID, sid: SID, banner: id, evento: tipo }), keepalive: true }).catch(() => {}); } catch (e) {}
+  }
+
+  let bnrTimer = null, bnrAssinatura = "";
+  function lugarBanner(pos) {
+    if (window.RADIO_TV) return { ref: $(".tvnp-ctrl"), modo: "afterend" };
+    const m = { topo: [".hero", "beforebegin"], "apos-player": [".hero", "afterend"], "apos-radios": ["#radios-sec", "afterend"], "apos-atalhos": ["[data-shortcuts]", "afterend", ".sec"], "apos-noticias": ["#noticias", "afterend"], rodape: ["#contato", "afterend"] }[pos] || [".hero", "afterend"];
+    let ref = $(m[0]); if (ref && m[2]) ref = ref.closest(m[2]);
+    return { ref, modo: m[1] };
+  }
+  function renderBanners(forcar) {
+    const b = config.banners, lista = bannersVisiveis();
+    const assinatura = JSON.stringify([b && { ...b, itens: undefined }, lista.map((x) => x.id + x.imagem + x.imagemCelular + x.legenda + x.duracao), dispositivoAtual()]);
+    if (!forcar && assinatura === bnrAssinatura && $("#bnr-app")) return;
+    bnrAssinatura = assinatura;
+    clearTimeout(bnrTimer);
+    const velho = $("#bnr-app"); if (velho) velho.remove();
+    if (!lista.length) return;
+    const { ref, modo } = lugarBanner(b.posicao); if (!ref) return;
+    const fx = b.transicao === "esmaecer" ? "fade" : b.transicao === "nenhuma" ? "nada" : "slide";
+    const el = document.createElement("section");
+    el.id = "bnr-app";
+    el.className = `bnr bnr-${fx} bnr-${b.largura === "tela" && !window.RADIO_TV ? "tela" : "conteudo"} ${b.ajuste === "conter" ? "bnr-conter" : ""}`;
+    el.style.setProperty("--bnr-ratio", proporcao(b.formato));
+    el.style.setProperty("--bnr-ratio-cel", proporcao(b.formatoCelular || b.formato));
+    el.style.setProperty("--bnr-raio", (+b.raio >= 0 ? +b.raio : 16) + "px");
+    el.style.setProperty("--bnr-vel", (+b.velocidade || 600) + "ms");
+    el.setAttribute("aria-roledescription", "carrossel"); el.setAttribute("aria-label", "Destaques");
+    const href = (x) => {
+      if (x.acao === "link" && safeUrl(x.link)) return `href="${esc(safeUrl(x.link))}" ${x.novaAba !== false ? 'target="_blank" rel="noopener"' : ""}`;
+      if (x.acao === "whatsapp" && x.whatsapp) return `href="https://wa.me/${esc(String(x.whatsapp).replace(/\D/g, ""))}?text=${encodeURIComponent((x.mensagem || "").replace(/\{radio\}/g, atual ? atual.nome : ""))}" target="_blank" rel="noopener"`;
+      if (x.acao === "radio" && x.radio) return `href="#" data-bnr-radio="${esc(x.radio)}"`;
+      return "";
+    };
+    el.innerHTML = `<div class="bnr-janela"><div class="bnr-trilho">${lista.map((x, i) => {
+      const h = href(x), tag = h ? "a" : "div", img = safeUrl(x.imagem || x.imagemCelular), cel = safeUrl(x.imagemCelular);
+      return `<${tag} class="bnr-item ${i === 0 ? "on" : ""}" data-bid="${esc(x.id)}" ${h} style="background:${esc(/^#[0-9a-f]{3,8}$/i.test(x.corFundo || "") ? x.corFundo : "#000")}" aria-label="${esc(x.alt || x.titulo || "Banner " + (i + 1))}" role="group" aria-roledescription="slide">
+        <picture>${cel && !window.RADIO_TV ? `<source media="(max-width:760px)" srcset="${esc(cel)}">` : ""}<img src="${esc(img)}" alt="${esc(x.alt || x.titulo || "")}" ${i ? 'loading="lazy"' : ""} draggable="false"></picture>
+        ${x.legenda ? `<span class="bnr-leg">${esc(x.legenda)}</span>` : ""}</${tag}>`;
+    }).join("")}</div></div>
+      ${lista.length > 1 && b.setas !== false ? `<button class="bnr-seta ant" aria-label="Anterior">‹</button><button class="bnr-seta prox" aria-label="Próximo">›</button>` : ""}
+      ${lista.length > 1 && b.pontos !== false ? `<div class="bnr-pontos">${lista.map((x, i) => `<button class="${i === 0 ? "on" : ""}" aria-label="Banner ${i + 1}"></button>`).join("")}</div>` : ""}`;
+    ref.insertAdjacentElement(modo, el);
+    let idx = 0, pausado = false;
+    const itens = $$(".bnr-item", el), pontos = $$(".bnr-pontos button", el), trilho = $(".bnr-trilho", el);
+    const agendar = () => {
+      clearTimeout(bnrTimer);
+      if (lista.length < 2 || b.autoplay === false || pausado) return;
+      const seg = +lista[idx].duracao > 0 ? +lista[idx].duracao : +b.intervalo > 0 ? +b.intervalo : 6;
+      bnrTimer = setTimeout(() => { if (!document.hidden && el.isConnected) ir(idx + 1); else agendar(); }, seg * 1000);
+    };
+    const ir = (i) => {
+      idx = (i + lista.length) % lista.length;
+      if (fx === "slide") trilho.style.transform = `translateX(${-idx * 100}%)`;
+      itens.forEach((it, k) => it.classList.toggle("on", k === idx));
+      pontos.forEach((p, k) => p.classList.toggle("on", k === idx));
+      eventoBanner(lista[idx].id, "exibicao");
+      agendar();
+    };
+    eventoBanner(lista[0].id, "exibicao");
+    pontos.forEach((p, k) => (p.onclick = () => ir(k)));
+    const ant = $(".bnr-seta.ant", el), prox = $(".bnr-seta.prox", el);
+    if (ant) ant.onclick = () => ir(idx - 1);
+    if (prox) prox.onclick = () => ir(idx + 1);
+    if (b.pausarInteracao !== false) {
+      el.addEventListener("mouseenter", () => { pausado = true; clearTimeout(bnrTimer); });
+      el.addEventListener("mouseleave", () => { pausado = false; agendar(); });
+    }
+    // arrastar com o dedo
+    let x0 = null, arrastou = false;
+    el.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; arrastou = false; if (b.pausarInteracao !== false) clearTimeout(bnrTimer); }, { passive: true });
+    el.addEventListener("touchend", (e) => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { arrastou = true; ir(idx + (dx < 0 ? 1 : -1)); } else agendar(); }, { passive: true });
+    itens.forEach((it) => it.addEventListener("click", (e) => {
+      if (arrastou) { e.preventDefault(); arrastou = false; return; }
+      eventoBanner(it.dataset.bid, "clique");
+      const rid = it.dataset.bnrRadio;
+      if (rid) { e.preventDefault(); const r = radiosAtivas().find((z) => z.id === rid); if (r) selecionar(r, true); }
+    }));
+    agendar();
+  }
+  // reavalia agenda (início/fim, dias, horários) a cada minuto e ao trocar de rádio/tamanho de tela
+  setInterval(() => { if (config && !document.hidden) renderBanners(); }, 60000);
+  addEventListener("resize", () => { clearTimeout(window.__bnrRs); window.__bnrRs = setTimeout(() => config && renderBanners(), 300); });
+
+  // ----- aba Banners (painel) -----
+  function abaBanners(body) {
+    const b = rascunho.banners = Object.assign(bnrPadrao(), rascunho.banners || {});
+    b.itens = (b.itens || []).map((x) => Object.assign(bnrNovo(), x, { dispositivos: Object.assign({ celular: true, computador: true, tv: true }, x.dispositivos || {}) }));
+    const radiosAdm = rascunho.radios || [];
+    const opt = (lista, v) => lista.map(([k, t]) => `<option value="${k}" ${String(v) === k ? "selected" : ""}>${t}</option>`).join("");
+    const sw = (k, v, t) => `<label class="switch"><input type="checkbox" data-g="${k}" ${v ? "checked" : ""}><i></i><span>${t}</span></label>`;
+    const dt = (v) => (v ? String(v).slice(0, 16) : "");
+    body.innerHTML = `
+      <div class="adm-head"><h3>Banners em carrossel</h3>${sw("ativo", b.ativo, "Mostrar banners no app")}</div>
+      <article class="adm-card">
+        <div class="adm-card-top"><span class="drag">⚙</span><strong>Configuração do carrossel</strong></div>
+        <div class="grid">
+          <label class="f"><span>Posição na página</span><select data-g="posicao">${opt(BNR_POS, b.posicao)}</select></label>
+          <label class="f"><span>Largura</span><select data-g="largura">${opt([["conteudo", "Alinhado ao conteúdo"], ["tela", "Tela inteira (de ponta a ponta)"]], b.largura)}</select></label>
+          <label class="f"><span>Formato (computador e TV)</span><select data-g="formato">${opt(BNR_FMT, b.formato)}</select></label>
+          <label class="f"><span>Formato no celular</span><select data-g="formatoCelular"><option value="">Igual ao do computador</option>${opt(BNR_FMT, b.formatoCelular)}</select></label>
+          <label class="f"><span>Tempo de exibição padrão (segundos)</span><input type="number" min="2" max="120" data-g="intervalo" value="${b.intervalo}"></label>
+          <label class="f"><span>Transição</span><select data-g="transicao">${opt([["deslizar", "Deslizar"], ["esmaecer", "Esmaecer (fade)"], ["nenhuma", "Sem animação"]], b.transicao)}</select></label>
+          <label class="f"><span>Velocidade da transição (ms)</span><input type="number" min="0" max="3000" step="100" data-g="velocidade" value="${b.velocidade}"></label>
+          <label class="f"><span>Ajuste da imagem</span><select data-g="ajuste">${opt([["cobrir", "Preencher (corta as bordas se precisar)"], ["conter", "Mostrar inteira (com fundo colorido)"]], b.ajuste)}</select></label>
+          <label class="f"><span>Arredondamento dos cantos (px)</span><input type="number" min="0" max="40" data-g="raio" value="${b.raio}"></label>
+          <label class="f"><span>Máximo de banners no carrossel (0 = todos)</span><input type="number" min="0" max="30" data-g="maxItens" value="${b.maxItens}"></label>
+        </div>
+        <div class="sw-row">${sw("autoplay", b.autoplay, "Passar sozinho")}${sw("pausarInteracao", b.pausarInteracao, "Pausar ao passar o mouse ou tocar")}${sw("setas", b.setas, "Setas")}${sw("pontos", b.pontos, "Pontinhos")}${sw("embaralhar", b.embaralhar, "Ordem aleatória (mesma prioridade)")}${sw("contarMetricas", b.contarMetricas, "Contar exibições e cliques")}</div>
+        <p class="hint">Tamanho recomendado da arte: veja o número entre parênteses no formato escolhido. Use JPG ou WebP de até 3 MB. Com <b>Mostrar inteira</b>, a sobra é preenchida com a cor de fundo do banner.</p>
+      </article>
+      <div class="adm-head"><h4>Banners (${b.itens.length})</h4><button class="btn primary sm" data-bnr-add>+ Novo banner</button></div>
+      <div class="adm-list">${b.itens.map((x, i) => `
+        <article class="adm-card bnr-adm" data-i="${i}">
+          <div class="adm-card-top">
+            <span class="bnr-thumb" style="aspect-ratio:${proporcao(b.formato)}">${safeUrl(x.imagem) ? `<img src="${esc(safeUrl(x.imagem))}" alt="">` : "🖼"}</span>
+            <strong>${esc(x.titulo || "Banner sem nome")}</strong>
+            <small class="bnr-stats" data-stats="${esc(x.id)}"></small>
+            <label class="switch"><input type="checkbox" data-k="ativo" ${x.ativo ? "checked" : ""}><i></i><span>Ativo</span></label>
+            <button class="icon" data-move="-1" title="Subir" ${i === 0 ? "disabled" : ""}>↑</button><button class="icon" data-move="1" title="Descer" ${i === b.itens.length - 1 ? "disabled" : ""}>↓</button>
+            <button class="icon" data-dup title="Duplicar">⧉</button><button class="icon danger" data-del title="Excluir">🗑</button>
+          </div>
+          <div class="grid">
+            <label class="f"><span>Nome interno</span><input data-k="titulo" value="${esc(x.titulo)}" placeholder="Ex.: Promoção Dia das Mães"></label>
+            <label class="f"><span>Texto alternativo (acessibilidade)</span><input data-k="alt" value="${esc(x.alt)}" placeholder="Descreva a imagem"></label>
+            ${campoImagem("Imagem (computador e TV)", x.imagem, "imagem")}
+            ${campoImagem("Imagem para celular (opcional)", x.imagemCelular, "imagemCelular")}
+            <label class="f full"><span>Legenda sobre a imagem (opcional)</span><input data-k="legenda" value="${esc(x.legenda)}" placeholder="Ex.: Sorteio sábado às 10h"></label>
+            <label class="f"><span>Ao tocar no banner</span><select data-k="acao">${opt([["link", "Abrir um link"], ["whatsapp", "Abrir WhatsApp"], ["radio", "Tocar uma rádio"], ["nenhuma", "Nada (só imagem)"]], x.acao)}</select></label>
+            ${x.acao === "link" ? `<label class="f"><span>Link</span><input data-k="link" value="${esc(x.link)}" placeholder="https://…"></label>` : ""}
+            ${x.acao === "whatsapp" ? `<label class="f"><span>Número do WhatsApp</span><input data-k="whatsapp" value="${esc(x.whatsapp)}" inputmode="tel" placeholder="5582999999999"></label><label class="f full"><span>Mensagem pronta</span><input data-k="mensagem" value="${esc(x.mensagem)}" placeholder="Olá! Vi o banner no app da {radio}…"></label>` : ""}
+            ${x.acao === "radio" ? `<label class="f"><span>Rádio</span><select data-k="radio"><option value="">Escolha…</option>${radiosAdm.map((r) => `<option value="${esc(r.id)}" ${x.radio === r.id ? "selected" : ""}>${esc(r.nome + " " + (r.frequencia || ""))}</option>`).join("")}</select></label>` : ""}
+            ${x.acao === "link" ? `<label class="f check"><input type="checkbox" data-k="novaAba" ${x.novaAba ? "checked" : ""}> Abrir em nova aba</label>` : ""}
+            <label class="f"><span>Tempo deste banner (s) — 0 usa o padrão</span><input type="number" min="0" max="120" data-k="duracao" value="${+x.duracao || 0}"></label>
+            <label class="f"><span>Prioridade (maior aparece primeiro)</span><input type="number" min="0" max="100" data-k="prioridade" value="${+x.prioridade || 0}"></label>
+            <label class="f"><span>Cor de fundo</span><input type="color" data-k="corFundo" value="${esc(x.corFundo || "#000000")}"></label>
+            <label class="f"><span>Início da exibição</span><input type="datetime-local" data-k="inicio" value="${esc(dt(x.inicio))}"></label>
+            <label class="f"><span>Fim da exibição</span><input type="datetime-local" data-k="fim" value="${esc(dt(x.fim))}"></label>
+            <label class="f"><span>Das (hora)</span><input type="time" data-k="horaIni" value="${esc(x.horaIni)}"></label>
+            <label class="f"><span>Até (hora)</span><input type="time" data-k="horaFim" value="${esc(x.horaFim)}"></label>
+            <div class="f full"><span>Dias da semana <small>(nenhum marcado = todos)</small></span><div class="chips">${BNR_DIAS.map((d, k) => `<label class="chip"><input type="checkbox" data-dia="${k}" ${x.dias.includes(k) ? "checked" : ""}><span>${d}</span></label>`).join("")}</div></div>
+            <div class="f full"><span>Mostrar quando estiver tocando <small>(nenhuma marcada = todas)</small></span><div class="chips">${radiosAdm.map((r) => `<label class="chip"><input type="checkbox" data-radioalvo="${esc(r.id)}" ${x.radios.includes(r.id) ? "checked" : ""}><span>${esc((r.frequencia || "").replace(" FM", "") + " " + (r.cidade || r.nome).split(" - ")[0])}</span></label>`).join("")}</div></div>
+            <div class="f full"><span>Aparelhos</span><div class="chips">${[["celular", "📱 Celular"], ["computador", "💻 Computador"], ["tv", "📺 TV"]].map(([k, t]) => `<label class="chip"><input type="checkbox" data-disp="${k}" ${x.dispositivos[k] !== false ? "checked" : ""}><span>${t}</span></label>`).join("")}</div></div>
+            <p class="hint full bnr-status">${bnrStatus(x)}</p>
+          </div>
+        </article>`).join("") || `<p class="hint">Nenhum banner ainda. Clique em <b>+ Novo banner</b>.</p>`}</div>`;
+    $$("[data-g]", body).forEach((inp) => inp.addEventListener(inp.type === "checkbox" ? "change" : "input", () => {
+      const k = inp.dataset.g; b[k] = inp.type === "checkbox" ? inp.checked : inp.type === "number" ? +inp.value : inp.value;
+      if (k === "formato") abaBanners(body);
+    }));
+    $("[data-bnr-add]", body).onclick = () => { b.itens.unshift(bnrNovo()); abaBanners(body); };
+    $$(".adm-card.bnr-adm", body).forEach((card) => {
+      const i = +card.dataset.i, x = b.itens[i];
+      const atualizarStatus = () => ($(".bnr-status", card).innerHTML = bnrStatus(x));
+      $$("[data-k]", card).forEach((inp) => inp.addEventListener(inp.type === "checkbox" || inp.tagName === "SELECT" ? "change" : "input", () => {
+        const k = inp.dataset.k;
+        x[k] = inp.type === "checkbox" ? inp.checked : inp.type === "number" ? +inp.value : inp.value.trim();
+        if (k === "titulo") $(".adm-card-top strong", card).textContent = inp.value || "Banner sem nome";
+        if (k === "imagem") $(".bnr-thumb", card).innerHTML = safeUrl(x.imagem) ? `<img src="${esc(safeUrl(x.imagem))}" alt="">` : "🖼";
+        if (k === "acao") abaBanners(body); else atualizarStatus();
+      }));
+      $$("[data-dia]", card).forEach((c) => (c.onchange = () => { x.dias = $$("[data-dia]", card).filter((z) => z.checked).map((z) => +z.dataset.dia); atualizarStatus(); }));
+      $$("[data-radioalvo]", card).forEach((c) => (c.onchange = () => { x.radios = $$("[data-radioalvo]", card).filter((z) => z.checked).map((z) => z.dataset.radioalvo); atualizarStatus(); }));
+      $$("[data-disp]", card).forEach((c) => (c.onchange = () => { x.dispositivos[c.dataset.disp] = c.checked; atualizarStatus(); }));
+      $$("[data-move]", card).forEach((bt) => (bt.onclick = () => { const j = i + +bt.dataset.move; [b.itens[i], b.itens[j]] = [b.itens[j], b.itens[i]]; abaBanners(body); }));
+      $("[data-dup]", card).onclick = () => { b.itens.splice(i + 1, 0, Object.assign(clone(x), { id: uid(), titulo: (x.titulo || "Banner") + " (cópia)" })); abaBanners(body); };
+      $("[data-del]", card).onclick = () => { if (card.dataset.confirm) { b.itens.splice(i, 1); abaBanners(body); } else { card.dataset.confirm = 1; toast("Clique na lixeira de novo para confirmar"); setTimeout(() => delete card.dataset.confirm, 3000); } };
+      ligarImagens(card);
+    });
+    // métricas (servidor com PHP)
+    if (!PREVIEW && !ESTATICO && b.itens.length) {
+      fetch(API + "audiencia.php?acao=banners", { headers: authH() }).then((r) => r.json()).then((j) => {
+        $$("[data-stats]", body).forEach((s) => { const m = (j.banners || {})[s.dataset.stats]; if (!m) return; const ctr = m.exibicoes ? ((m.cliques / m.exibicoes) * 100).toFixed(1) : "0"; s.textContent = `👁 ${m.exibicoes} · 👆 ${m.cliques} · ${ctr}% (30 dias)`; });
+      }).catch(() => {});
+    }
+  }
+  function bnrStatus(x) {
+    const agora = new Date(), p = [];
+    if (!x.ativo) return "⏸ Desativado";
+    if (!safeUrl(x.imagem || x.imagemCelular)) return "⚠ Falta a imagem";
+    if (x.inicio && new Date(x.inicio) > agora) p.push("⏳ Começa em " + new Date(x.inicio).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }));
+    else if (x.fim && new Date(x.fim) < agora) p.push("⛔ Encerrado em " + new Date(x.fim).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }));
+    else p.push("✅ No ar" + (x.fim ? " até " + new Date(x.fim).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""));
+    const hm = agora.getHours() * 60 + agora.getMinutes(), hi = minutos(x.horaIni), hf = minutos(x.horaFim);
+    const foraDia = x.dias && x.dias.length && !x.dias.includes(agora.getDay());
+    const foraHora = hi !== null && hf !== null && !(hi <= hf ? hm >= hi && hm < hf : hm >= hi || hm < hf);
+    if ((foraDia || foraHora) && p[0].startsWith("✅")) p[0] = "🕒 Agendado — fora do dia/horário agora";
+    if (x.dias && x.dias.length) p.push(x.dias.map((d) => BNR_DIAS[d]).join(", "));
+    if (x.horaIni && x.horaFim) p.push(`${x.horaIni}–${x.horaFim}`);
+    if (x.radios && x.radios.length) p.push(x.radios.length + " rádio(s)");
+    const off = ["celular", "computador", "tv"].filter((k) => x.dispositivos && x.dispositivos[k] === false);
+    if (off.length) p.push("sem " + off.join(", "));
+    return p.join(" · ");
   }
 
   // ----- aba Aparência -----
@@ -1448,7 +1690,7 @@
 
   function aplicarNovaConfig() {
     config = clone(rascunho);
-    aplicarTema(); renderRadios(); renderContato(); marcarVideo(estadoVideo || { aoVivo: false });
+    aplicarTema(); renderRadios(); renderContato(); renderBanners(true); marcarVideo(estadoVideo || { aoVivo: false });
     if (atual) { const n = config.radios.find((r) => r.id === atual.id); if (n) { const mudouStream = n.stream !== atual.stream; atual = n; renderAgora(); if (mudouStream && document.body.dataset.player === "playing") tocar(); } }
     renderNoticias();
   }
@@ -1535,11 +1777,12 @@
     if (ini && !PREVIEW && config.site.autoplay !== false) autoTocar();
     if (PREVIEW) { setEstado("paused", "Prévia do layout"); barraPrevia(); }
     renderContato();
+    renderBanners(true);
     renderNoticias();
     checarAoVivo();
     iniciarMedicao();
     if (!PREVIEW && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
-    if (location.hash === "#admin") abrirAdmin();
+    if (location.hash === "#admin") { document.body.classList.add("modo-adm"); abrirAdmin(); }
   }
   document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", iniciar) : iniciar();
 })();

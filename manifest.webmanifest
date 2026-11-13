@@ -1,7 +1,7 @@
 {
   "name": "Rede Francês FM",
   "short_name": "Francês FM",
-  "description": "Ouça a Rede Francês FM ao vivo — Maceió 106.1 e Caruaru 105.5.",
+  "description": "Ouça a Rede Francês FM ao vivo: Maceió 106.1 e 99.1, Caruaru 105.5, Bonito 98.7 e Rio Formoso 90.5.",
   "lang": "pt-BR",
   "start_url": "./index.html?app=1",
   "scope": "./",

@@ -54,3 +54,26 @@ A barra de volume controla o som do app (curva de áudio: metade da barra = meta
 - **iPhone (Safari):** abra o site → botão Compartilhar → **Adicionar à Tela de Início**.
 
 O app abre em tela cheia, com ícone próprio, e o áudio continua tocando com a tela bloqueada (controles na tela de bloqueio).
+
+## Painel gerencial (escondido do ouvinte)
+O ouvinte não vê o acesso ao painel. Para entrar:
+- abra o endereço do app com **#admin** no final (ex.: `.../radio-frances-fm/#admin`); ou
+- toque **5 vezes seguidas na logo**.
+
+Depois do primeiro acesso, a engrenagem volta a aparecer naquele aparelho.
+
+## Banners
+No painel, a aba **🖼 Banners** controla o carrossel. Dá para escolher:
+- **Carrossel:** posição na página, largura, formato (computador/TV e celular), tempo de exibição, transição e velocidade, ajuste da imagem, cantos, quantidade, ordem aleatória, setas e pontinhos.
+- **Cada banner:** imagem para computador e para celular, legenda, ação ao tocar (link, WhatsApp ou tocar uma rádio), tempo próprio, prioridade, cor de fundo, data e hora de início e fim, dias da semana, faixa de horário, rádios em que aparece e aparelhos (celular, computador, TV).
+- **Métricas** (com servidor PHP): exibições, cliques e taxa de cliques dos últimos 30 dias.
+
+## TV
+A versão para TV fica em `tv.html`. Os arquivos para instalar em Samsung, LG e Android TV estão em `tv-apps/` (veja `tv-apps/LEIA-ME.md`).
+
+## CarPlay e Android Auto
+Com o app tocando, o CarPlay e o Android Auto mostram a tela "Tocando agora" com a música, o artista e a capa.
+- Play e pause do volante funcionam.
+- Avançar e voltar trocam de rádio.
+
+Um ícone próprio na tela do carro, abrindo sozinho quando o celular conecta, só existe em app nativo publicado na App Store e na Google Play: a Apple exige a permissão de áudio para CarPlay.
