@@ -409,6 +409,16 @@
     const titulo = limparNp(p.cue_title), artista = limparNp(p.track_artist_name);
     return titulo || artista ? { titulo, artista } : null;
   }
+  // O RDS também manda vinhetas, comerciais e o nome da própria rádio: isso não é música e não vira "Tocando agora"
+  const NAO_MUSICA = /\b(franc[eê]s\s*fm|intervalo|comercia(l|is)|vinheta|spot|propaganda|publicidade|patroc[ií]nio|hora certa|chamada|promo[cç][aã]o|jingle|unknown|desconhecid[oa]|sem t[ií]tulo|advert|commercial|station id)\b/i;
+  function ehMusica(m, r) {
+    if (!m || !(m.titulo || m.artista)) return false;
+    const t = norm(m.titulo), a = norm(m.artista), nomeRadio = norm(r && r.nome);
+    if (NAO_MUSICA.test(m.titulo + " " + m.artista)) return false;
+    if (!t || /^[\d\s:-]+$/.test(t)) return false;                    // só números/horário
+    if (nomeRadio && (t === nomeRadio || a === nomeRadio)) return false;
+    return true;
+  }
 
   async function enriquecer(m) {   // grafia correta + capa do álbum (iTunes Search, com cache)
     const k = norm(m.titulo) + "|" + norm(m.artista);
@@ -440,11 +450,20 @@
           try { const x = await fetch(url, { cache: "no-store" }); if (x.ok) { const j = await x.json(); const t = limparNp(j.text); if (t) { const [ti, ...ar] = t.split(/,\s*/); m = { titulo: ti, artista: ar.join(", ") }; break; } } } catch (e) {}
         }
       }
+      if (m && !ehMusica(m, r)) m = null;
       if (m && m.titulo) m = await enriquecer(m);
       if (m) m = { ...m, titulo: titleCase(m.titulo), artista: titleCase(m.artista) };
     }
     if (atual !== r) return;                       // trocou de rádio durante a busca
-    const chave = m ? m.titulo + "|" + m.artista : "";
+    // Programa no ar (jornalismo, futebol, humor…): aparece quando não há música, ou sempre se marcado no painel
+    const prog = r && !r.tocandoTexto ? programaAtual(r) : null;
+    if (prog && (!m || prog.mostrarComMusica)) {
+      const [, emoji, tipoNome] = tipoProg(prog.tipo);
+      const sub = [prog.apresentador ? "Com " + prog.apresentador : "", prog.descricao].filter(Boolean).join(" · ");
+      m = { titulo: prog.nome, artista: `${emoji} ${tipoNome}${sub ? " · " + sub : ""}`, capa: safeUrl(prog.imagem) || "", programa: true };
+    }
+    const chave = m ? m.titulo + "|" + m.artista + "|" + (m.capa || "") : "";
+    document.body.classList.toggle("np-programa", !!(m && m.programa));
     const texto = m ? [m.titulo, m.artista].filter(Boolean).join(" — ") : "";
     $$("[data-np=song]").forEach((e) => (e.textContent = texto || (r ? r.slogan || config.site.slogan || "" : "")));
     $$("[data-np=track]").forEach((e) => (e.textContent = m ? m.titulo : ((r && r.slogan) || config.site.slogan || "")));
@@ -461,7 +480,7 @@
       npChave = chave;
       try {
         navigator.mediaSession.metadata = new MediaMetadata({ title: m ? m.titulo : r.nome, artist: m ? m.artista || r.nome : (r.frequencia || ""), album: r.nome,
-          artwork: m && m.capa ? [{ src: m.capa, sizes: "300x300", type: "image/jpeg" }] : [{ src: new URL("assets/icons/icon-512.png", location.href).href, sizes: "512x512", type: "image/png" }] });
+          artwork: m && m.capa ? [{ src: new URL(m.capa, location.href).href, sizes: "512x512" }] : [{ src: new URL("assets/icons/icon-512.png", location.href).href, sizes: "512x512", type: "image/png" }] });
       } catch (e) {}
     }
   }
@@ -914,7 +933,7 @@
           </div>
         </header>
         <nav class="adm-tabs">
-          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["banners", "🖼 Banners"], ["aparencia", "🎨 Aparência"], ["audiencia", "📊 Audiência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
+          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["programacao", "📅 Programação"], ["banners", "🖼 Banners"], ["aparencia", "🎨 Aparência"], ["audiencia", "📊 Audiência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
         </nav>
         <section class="adm-body"></section>
       </div>`;
@@ -925,7 +944,7 @@
     $("[data-act=import]", ov).onclick = importar;
     $("[data-act=sair]", ov).onclick = sair;
     if (aba === "usuarios" && !ehAdmin()) aba = "radios";
-    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, banners: abaBanners, aparencia: abaAparencia, audiencia: abaAudiencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
+    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, programacao: abaProgramacao, banners: abaBanners, aparencia: abaAparencia, audiencia: abaAudiencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
   }
 
   // ----- aba Contato / WhatsApp -----
@@ -1418,6 +1437,93 @@
     const off = ["celular", "computador", "tv"].filter((k) => x.dispositivos && x.dispositivos[k] === false);
     if (off.length) p.push("sem " + off.join(", "));
     return p.join(" · ");
+  }
+
+  // =====================================================================
+  // PROGRAMAÇÃO — programas por rádio, dias e horários (aparece no "Tocando agora" quando não há música)
+  // =====================================================================
+  const PROG_TIPOS = [["jornalismo", "📰", "Jornalismo"], ["futebol", "⚽", "Futebol"], ["esporte", "🏆", "Esporte"], ["humor", "😂", "Humor / Comédia"], ["entrevista", "🎙️", "Entrevista"], ["variedades", "🎉", "Variedades"], ["religioso", "🙏", "Religioso"], ["musical", "🎵", "Musical"], ["outro", "📻", "Outro"]];
+  const tipoProg = (k) => PROG_TIPOS.find((t) => t[0] === k) || PROG_TIPOS[PROG_TIPOS.length - 1];
+  const progNovo = () => ({ id: uid(), nome: "", tipo: "jornalismo", apresentador: "", descricao: "", imagem: "", dias: [1, 2, 3, 4, 5], inicio: "", fim: "", mostrarComMusica: false, ativo: true });
+  function programaAtual(r, quando) {
+    const lista = (r && r.programas) || []; if (!lista.length) return null;
+    const d = quando || new Date(), hm = d.getHours() * 60 + d.getMinutes(), dia = d.getDay(), ontem = (dia + 6) % 7;
+    const ativos = lista.filter((p) => {
+      if (p.ativo === false || !p.nome) return false;
+      const a = minutos(p.inicio), b = minutos(p.fim); if (a === null || b === null) return false;
+      const dias = p.dias && p.dias.length ? p.dias : [0, 1, 2, 3, 4, 5, 6];
+      if (a < b) return dias.includes(dia) && hm >= a && hm < b;
+      return (dias.includes(dia) && hm >= a) || (dias.includes(ontem) && hm < b);   // atravessa a meia-noite
+    });
+    const dur = (p) => { const a = minutos(p.inicio), b = minutos(p.fim); return a < b ? b - a : 1440 - a + b; };
+    return ativos.sort((x, y) => dur(x) - dur(y))[0] || null;   // o mais curto vence (ex.: boletim dentro de um programa longo)
+  }
+
+  // ----- aba Programação (painel) -----
+  let progRadio = null;
+  function abaProgramacao(body) {
+    const rs = rascunho.radios || [];
+    if (!rs.length) { body.innerHTML = `<p class="empty">Cadastre uma rádio primeiro.</p>`; return; }
+    if (!progRadio || !rs.find((r) => r.id === progRadio)) progRadio = rs[0].id;
+    const r = rs.find((x) => x.id === progRadio);
+    r.programas = (r.programas || []).map((p) => Object.assign(progNovo(), p));
+    const ordenar = () => r.programas.sort((a, b) => (minutos(a.inicio) ?? 9999) - (minutos(b.inicio) ?? 9999));
+    const agora = programaAtual(r);
+    body.innerHTML = `
+      <div class="adm-head"><h3>Programação das rádios</h3><button class="btn primary sm" data-pg-add>+ Novo programa</button></div>
+      <div class="chips pg-radios">${rs.map((x) => `<label class="chip"><input type="radio" name="pgr" value="${esc(x.id)}" ${x.id === progRadio ? "checked" : ""}><span>${esc((x.frequencia || "").replace(" FM", "") + " " + ((x.cidade || x.nome).split(" - ")[0]))} (${(x.programas || []).length})</span></label>`).join("")}</div>
+      <p class="hint">Nos dias e horários de cada programa, o "Tocando agora" mostra a imagem, o nome e a descrição do programa quando a rádio não estiver mandando o nome de uma música. ${agora ? `<br><b>No ar agora nesta rádio:</b> ${esc(tipoProg(agora.tipo)[1] + " " + agora.nome)}` : ""}</p>
+      <div class="adm-list">${r.programas.map((p, i) => `
+        <article class="adm-card pg-card ${p.ativo ? "" : "off"}" data-i="${i}">
+          <div class="adm-card-top">
+            <span class="pg-thumb">${safeUrl(p.imagem) ? `<img src="${esc(safeUrl(p.imagem))}" alt="">` : tipoProg(p.tipo)[1]}</span>
+            <strong>${esc(p.nome || "Programa sem nome")}</strong>
+            <small class="pg-quando">${esc(resumoProg(p))}</small>
+            <label class="switch"><input type="checkbox" data-k="ativo" ${p.ativo ? "checked" : ""}><i></i><span>Ativo</span></label>
+            <button class="icon" data-dup title="Duplicar">⧉</button><button class="icon danger" data-del title="Excluir">🗑</button>
+          </div>
+          <div class="grid">
+            <label class="f"><span>Nome do programa</span><input data-k="nome" value="${esc(p.nome)}" placeholder="Ex.: Jornal da Francês"></label>
+            <label class="f"><span>Tipo</span><select data-k="tipo">${PROG_TIPOS.map(([k, e, t]) => `<option value="${k}" ${p.tipo === k ? "selected" : ""}>${e} ${t}</option>`).join("")}</select></label>
+            <label class="f"><span>Apresentador(es)</span><input data-k="apresentador" value="${esc(p.apresentador)}" placeholder="Ex.: João Silva"></label>
+            <label class="f"><span>Início</span><input type="time" data-k="inicio" value="${esc(p.inicio)}"></label>
+            <label class="f"><span>Fim</span><input type="time" data-k="fim" value="${esc(p.fim)}"></label>
+            <label class="f full"><span>Descrição</span><textarea data-k="descricao" rows="2" placeholder="Ex.: As principais notícias de Alagoas e do Brasil">${esc(p.descricao)}</textarea></label>
+            ${campoImagem("Imagem do programa (quadrada, 600×600)", p.imagem, "imagem")}
+            <div class="f full"><span>Dias da semana</span><div class="chips">${BNR_DIAS.map((d, k) => `<label class="chip"><input type="checkbox" data-dia="${k}" ${p.dias.includes(k) ? "checked" : ""}><span>${d}</span></label>`).join("")}
+              <button type="button" class="btn ghost sm" data-dias="1,2,3,4,5">Seg–Sex</button><button type="button" class="btn ghost sm" data-dias="0,6">Fim de semana</button><button type="button" class="btn ghost sm" data-dias="0,1,2,3,4,5,6">Todos</button></div></div>
+            <label class="f full check"><input type="checkbox" data-k="mostrarComMusica" ${p.mostrarComMusica ? "checked" : ""}> Mostrar o programa mesmo se a rádio mandar nome de música nesse horário</label>
+            <div class="f full"><span>Copiar este programa para</span><div class="chips">${rs.filter((x) => x.id !== r.id).map((x) => `<button type="button" class="btn ghost sm" data-copiar="${esc(x.id)}">${esc((x.frequencia || "").replace(" FM", "") + " " + ((x.cidade || x.nome).split(" - ")[0]))}</button>`).join("")}</div></div>
+          </div>
+        </article>`).join("") || `<p class="hint">Nenhum programa nesta rádio. Clique em <b>+ Novo programa</b>.</p>`}</div>`;
+    $$("[name=pgr]", body).forEach((c) => (c.onchange = () => { progRadio = c.value; abaProgramacao(body); }));
+    $("[data-pg-add]", body).onclick = () => { r.programas.unshift(progNovo()); abaProgramacao(body); };
+    $$(".pg-card", body).forEach((card) => {
+      const p = r.programas[+card.dataset.i];
+      const resumo = () => { $(".pg-quando", card).textContent = resumoProg(p); };
+      $$("[data-k]", card).forEach((inp) => inp.addEventListener(inp.type === "checkbox" || inp.tagName === "SELECT" ? "change" : "input", () => {
+        const k = inp.dataset.k; p[k] = inp.type === "checkbox" ? inp.checked : inp.value.trim();
+        if (k === "nome") $(".adm-card-top strong", card).textContent = inp.value || "Programa sem nome";
+        if (k === "ativo") card.classList.toggle("off", !inp.checked);
+        if (k === "imagem" || k === "tipo") $(".pg-thumb", card).innerHTML = safeUrl(p.imagem) ? `<img src="${esc(safeUrl(p.imagem))}" alt="">` : tipoProg(p.tipo)[1];
+        resumo();
+      }));
+      const marcarDias = () => $$("[data-dia]", card).forEach((z) => (z.checked = p.dias.includes(+z.dataset.dia)));
+      $$("[data-dia]", card).forEach((c) => (c.onchange = () => { p.dias = $$("[data-dia]", card).filter((z) => z.checked).map((z) => +z.dataset.dia); resumo(); }));
+      $$("[data-dias]", card).forEach((bt) => (bt.onclick = () => { p.dias = bt.dataset.dias.split(",").map(Number); marcarDias(); resumo(); }));
+      $("[data-dup]", card).onclick = () => { r.programas.push(Object.assign(clone(p), { id: uid(), nome: (p.nome || "Programa") + " (cópia)" })); abaProgramacao(body); };
+      $("[data-del]", card).onclick = () => { if (card.dataset.confirm) { r.programas.splice(+card.dataset.i, 1); abaProgramacao(body); } else { card.dataset.confirm = 1; toast("Clique na lixeira de novo para confirmar"); setTimeout(() => delete card.dataset.confirm, 3000); } };
+      $$("[data-copiar]", card).forEach((bt) => (bt.onclick = () => { const alvo = rs.find((x) => x.id === bt.dataset.copiar); alvo.programas = alvo.programas || []; alvo.programas.push(Object.assign(clone(p), { id: uid() })); toast(`Copiado para ${alvo.nome}`); abaProgramacao(body); }));
+      ligarImagens(card);
+      $$(".img-field input[data-k]", card).forEach((inp) => inp.addEventListener("input", () => { p[inp.dataset.k] = inp.value.trim(); $(".pg-thumb", card).innerHTML = safeUrl(p.imagem) ? `<img src="${esc(safeUrl(p.imagem))}" alt="">` : tipoProg(p.tipo)[1]; }));
+    });
+    // ao sair de um campo de horário, reordena pela hora de início
+    $$("[data-k=inicio]", body).forEach((inp) => inp.addEventListener("change", () => { ordenar(); abaProgramacao(body); }));
+  }
+  function resumoProg(p) {
+    const d = p.dias && p.dias.length ? p.dias : [];
+    const dias = d.length === 7 || !d.length ? "Todos os dias" : d.join() === "1,2,3,4,5" ? "Seg–Sex" : d.join() === "0,6" ? "Fim de semana" : d.map((k) => BNR_DIAS[k]).join(", ");
+    return `${tipoProg(p.tipo)[1]} ${dias}${p.inicio && p.fim ? ` · ${p.inicio}–${p.fim}` : " · defina o horário"}`;
   }
 
   // ----- aba Aparência -----

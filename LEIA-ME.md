@@ -84,3 +84,16 @@ Quando o ouvinte toca em VEJA AO VIVO, o app pergunta ao player oficial do YouTu
 - se não estiver, aparece o aviso "O canal não está ao vivo agora". O app confere de novo a cada minuto e abre a live sozinho quando ela começar.
 
 Opcional, para o botão já mostrar "Ao vivo agora" antes do toque: crie uma chave gratuita da **YouTube Data API v3** no Google Cloud Console e cadastre no GitHub em Settings › Secrets and variables › Actions, com o nome **YT_API_KEY**. Com a chave, o GitHub confere o canal a cada 5 minutos. Sem a chave, o YouTube bloqueia essa verificação a partir dos servidores do GitHub.
+
+## Programação (programas por horário)
+No painel, a aba **📅 Programação** organiza os programas de cada rádio. Para cada programa, preencha:
+- nome, tipo (jornalismo, futebol, esporte, humor, entrevista, variedades, religioso, musical) e apresentador;
+- descrição e imagem;
+- dias da semana, com atalhos Seg–Sex, Fim de semana e Todos;
+- horário de início e fim. Pode atravessar a meia-noite, por exemplo das 22:00 às 02:00.
+
+Também dá para duplicar um programa ou copiá-lo para outra rádio.
+
+No horário do programa, o "Tocando agora" (e a tela de bloqueio do celular) mostra a imagem, o nome e a descrição do programa sempre que a rádio não estiver mandando o nome de uma música. Para o programa aparecer mesmo durante as músicas, marque **Mostrar o programa mesmo se a rádio mandar nome de música**. Quando dois programas coincidem, vale o mais curto (ex.: um boletim dentro de um programa longo).
+
+O RDS também ignora textos que não são música, como o nome da rádio, vinhetas, comerciais e hora certa.
