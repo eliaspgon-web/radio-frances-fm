@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      canal_teste:
+        description: "Opcional: ID de outro canal (UC…) só para testar a detecção"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -21,6 +26,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 scripts/verificar_aovivo.py
+        env:
+          CANAL_TESTE: ${{ github.event.inputs.canal_teste }}
       - name: Salvar no repositório (se mudou)
         run: |
           git add data/aovivo.json 2>/dev/null || true

@@ -26,6 +26,10 @@ def analisar(pagina):
     return {"aoVivo": ao_vivo, "videoId": vid if ao_vivo else None, "titulo": titulo if ao_vivo else None, "embed": embed if ao_vivo else None}
 
 def main():
+    import os
+    teste = os.environ.get("CANAL_TESTE", "").strip()   # só para testar a detecção em outro canal (não grava nada)
+    if teste:
+        print("TESTE", teste, "→", analisar(baixar(f"https://www.youtube.com/channel/{teste}/live"))); return
     yt = str(CFG.get("site", {}).get("youtube", ""))
     m = re.search(r"(UC[\w-]{22})", yt); h = re.search(r"@([\w.\-]+)", yt)
     base = f"https://www.youtube.com/channel/{m.group(1)}" if m else (f"https://www.youtube.com/@{h.group(1)}" if h else None)
