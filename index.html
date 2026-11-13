@@ -122,8 +122,10 @@ body[data-player=playing] .station.active .station-logo{filter:drop-shadow(0 0 4
 
 /* atalhos (peça sua música / alô) */
 .shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.shortcuts > .shortcut:only-child{grid-column:1/-1}
-.shortcuts > .shortcut:only-child .sc-txt{font-size:1.2rem;max-width:62%}
+[data-shortcuts] > .shortcut:only-child{grid-column:1/-1;min-height:150px;justify-content:flex-start}
+[data-shortcuts] > .shortcut:only-child .sc-fig{height:140px}
+[data-shortcuts] > .shortcut:only-child .sc-txt{font-size:1.45rem;line-height:1.15;padding-right:56px;align-self:center}
+@media (max-width:520px){[data-shortcuts] > .shortcut:only-child{min-height:130px}[data-shortcuts] > .shortcut:only-child .sc-fig{height:124px}[data-shortcuts] > .shortcut:only-child .sc-txt{font-size:1.18rem;align-self:center;padding:0 48px 0 4px}}
 [data-shortcuts]{display:contents}
 .shortcut{position:relative;display:flex;align-items:center;gap:14px;min-height:92px;padding:16px 18px;border-radius:16px;color:#fff;text-decoration:none;font-weight:800;font-size:1.02rem;line-height:1.15;text-transform:uppercase;overflow:hidden;isolation:isolate;border:1px solid var(--line-c);background:var(--card)}
 .shortcut::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--grad);opacity:.92}
