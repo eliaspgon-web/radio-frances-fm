@@ -47,7 +47,8 @@
       "descricao": "Peça pelo WhatsApp",
       "mensagem": "Olá, {radio}! Quero pedir uma música: ",
       "ativo": true,
-      "atalho": true
+      "atalho": true,
+      "iconeImg": "assets/atalhos/peca-sua-musica-branca.png"
     },
     {
       "id": "alo",
@@ -57,7 +58,8 @@
       "descricao": "Recado no ar",
       "mensagem": "Olá, {radio}! Quero mandar um alô para: ",
       "ativo": true,
-      "atalho": true
+      "atalho": true,
+      "iconeImg": "assets/atalhos/mande-seu-alo-branca.png"
     },
     {
       "id": "comercial",

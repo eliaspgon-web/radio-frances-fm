@@ -513,14 +513,15 @@
     const item = (c) => {
       const href = linkWA(c);
       return `<a class="contact-btn ${href ? "" : "disabled"}" ${href ? `href="${esc(href)}" target="_blank" rel="noopener"` : `href="#" data-sem-numero`}>
-        <span class="contact-ico">${esc(iconeDe(c))}</span>
+        <span class="contact-ico ${safeUrl(c.iconeImg) ? "com-fig" : ""}">${safeUrl(c.iconeImg) ? `<img src="${esc(safeUrl(c.iconeImg))}" alt="">` : esc(iconeDe(c))}</span>
         <span class="contact-txt"><strong>${esc(c.tipo)}</strong><small>${esc(c.descricao || "Fale pelo WhatsApp")}</small></span>
         <span class="contact-wa">${ICON_WA}</span></a>`;
     };
     const normais = lista.filter((c) => !c.atalho), atalhos = lista.filter((c) => c.atalho);
     $$("[data-contact]").forEach((box) => (box.innerHTML = normais.length ? normais.map(item).join("") : `<p class="empty">Nenhum canal de contato ativo.</p>`));
     $$("[data-shortcuts]").forEach((box) => {
-      box.innerHTML = atalhos.map((c) => { const h = linkWA(c); return `<a class="shortcut" ${h ? `href="${esc(h)}" target="_blank" rel="noopener"` : `href="#" data-sem-numero`}><span>${esc(iconeDe(c))}</span>${esc(c.tipo)}</a>`; }).join("");
+      box.innerHTML = atalhos.map((c) => { const h = linkWA(c); const img = safeUrl(c.iconeImg);
+        return `<a class="shortcut ${img ? "com-fig" : ""}" ${h ? `href="${esc(h)}" target="_blank" rel="noopener"` : `href="#" data-sem-numero`}>${img ? `<span class="sc-fig"><img src="${esc(img)}" alt="" loading="lazy"></span>` : `<span>${esc(iconeDe(c))}</span>`}<b class="sc-txt">${esc(c.tipo)}</b></a>`; }).join("");
       box.hidden = !atalhos.length;
     });
     // botão flutuante + seletor
@@ -693,6 +694,7 @@
             <div class="grid">
               <label class="f"><span>Assunto</span><input data-k="tipo" value="${esc(c.tipo)}" placeholder="Comercial"></label>
               <label class="f"><span>Ícone (emoji)</span><input data-k="icone" value="${esc(c.icone || "")}" placeholder="${esc(iconeDe(c))}" maxlength="4"></label>
+              ${campoImagem("Imagem do ícone (PNG transparente, opcional)", c.iconeImg, "iconeImg")}
               <label class="f"><span>Número do WhatsApp</span><input data-k="numero" value="${esc(c.numero)}" inputmode="tel" placeholder="82 99999-0000"></label>
               <label class="f"><span>Descrição curta</span><input data-k="descricao" value="${esc(c.descricao)}" placeholder="Anuncie na rádio"></label>
               <label class="f full"><span>Mensagem inicial</span><textarea data-k="mensagem" rows="2">${esc(c.mensagem)}</textarea></label>
@@ -709,6 +711,7 @@
       }));
       $$("[data-move]", card).forEach((b) => (b.onclick = () => { const j = i + +b.dataset.move; [cs[i], cs[j]] = [cs[j], cs[i]]; abaContato(body); }));
       $("[data-del]", card).onclick = () => { if (card.dataset.confirm) { cs.splice(i, 1); abaContato(body); } else { card.dataset.confirm = 1; toast("Clique na lixeira de novo para confirmar"); setTimeout(() => delete card.dataset.confirm, 3000); } };
+      ligarImagens(card);
     });
   }
 

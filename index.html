@@ -209,6 +209,13 @@ body[data-player=playing] .tab-play::before{content:"";position:absolute;inset:-
 .np-artist{font-size:.9rem;color:var(--txt2);font-weight:600}
 .np-artist:empty{display:none}
 @media (max-width:1023px){body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}.np-line{justify-content:center}}
+.shortcut.com-fig{padding:0 18px 0 6px;align-items:flex-end;min-height:104px}
+.shortcut .sc-fig{width:auto;height:100px;flex:0 0 auto;background:none;border-radius:0;display:block;align-self:flex-end;margin-bottom:0}
+.shortcut .sc-fig img{height:100%;width:auto;display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
+.shortcut .sc-txt{font-weight:800;align-self:center;padding-right:30px}
+@media (max-width:520px){.shortcut.com-fig{flex-direction:row;align-items:flex-end;min-height:118px;padding:0 10px 0 2px}.shortcut .sc-fig{height:96px}.shortcut .sc-txt{font-size:.82rem;padding:14px 0 0;align-self:flex-start}.shortcut.com-fig::after{top:auto;bottom:12px;right:12px;transform:none}}
+.contact-ico.com-fig{background:rgba(255,255,255,.08);overflow:hidden;padding:2px}
+.contact-ico.com-fig img{height:100%;width:auto}
 </style>
 </head>
 <body data-player="idle">
