@@ -160,6 +160,7 @@
     renderAgora();
     renderContato(); // a mensagem do WhatsApp cita a rádio atual
     atualizarTocando();
+    querTocar = false; clearTimeout(vigia);
     audio.pause();
     if (!r.stream) { setEstado("error", "Endereço de streaming não cadastrado"); return; }
     if (PREVIEW) { setEstado("paused", "Prévia do layout"); if (tocarJa) ouvirNaPrevia(r); return; }
@@ -168,7 +169,17 @@
     mediaSession();
   }
 
+  let querTocar = false, tentativas = 0, vigia = null;
+  function reconectar(motivo) {
+    if (!querTocar || !atual || !atual.stream || PREVIEW) return;
+    clearTimeout(vigia);
+    const espera = Math.min(15000, 1500 * Math.pow(2, Math.min(tentativas, 4)));   // 1,5s · 3s · 6s · 12s · 15s
+    tentativas++;
+    setEstado("loading", "Reconectando…");
+    vigia = setTimeout(() => { if (!querTocar) return; audio.src = atual.stream; audio.play().catch(() => {}); }, tentativas === 1 ? 300 : espera);
+  }
   function tocar() {
+    querTocar = true; tentativas = 0;
     if (!atual) { const p = radiosAtivas()[0]; if (p) selecionar(p, true); return; }
     if (PREVIEW) { ouvirNaPrevia(atual); return; }
     if (!atual.stream) { selecionar(atual, false); return; }
@@ -180,12 +191,18 @@
   // Toca sozinho ao abrir. Se o navegador bloquear som automático (regra do iPhone/Android),
   // o primeiro toque em qualquer lugar da tela começa a rádio.
   function autoTocar() {
-    const comecar = () => { soltar(); if (document.body.dataset.player !== "playing" && document.body.dataset.player !== "loading") tocar(); };
+    const comecar = (e) => {
+      soltar();
+      if (e && e.target && e.target.closest && e.target.closest("[data-np=play],[data-np=loud],[data-np=mute],[data-np=next],[data-np=prev],[data-np=vol],.station,[data-stations] button,[data-watch]")) return;   // o próprio botão toca
+      if (document.body.dataset.player !== "playing" && document.body.dataset.player !== "loading") tocar();
+    };
     const soltar = () => { ["pointerdown", "keydown", "touchend"].forEach((ev) => document.removeEventListener(ev, comecar, true)); const d = $("#toque-ouvir"); if (d) d.remove(); };
     if (!atual || !atual.stream) return;
+    querTocar = true; tentativas = 0;
     audio.src = atual.stream;
     setEstado("loading", "Conectando…");
     audio.play().then(soltar).catch(() => {
+      querTocar = false;
       setEstado("paused", "Toque para ouvir");
       const d = document.createElement("div"); d.id = "toque-ouvir"; d.setAttribute("role", "button");
       d.innerHTML = `<span>▶</span><b>Toque em qualquer lugar para ouvir</b><small>${esc(atual.nome)}${atual.frequencia ? " · " + esc(atual.frequencia) : ""}</small>`;
@@ -194,10 +211,17 @@
     });
   }
 
-  function pausar() { audio.pause(); setEstado("paused", "Pausado"); }
+  function pausar() { querTocar = false; clearTimeout(vigia); audio.pause(); setEstado("paused", "Pausado"); }
   function alternar() { (document.body.dataset.player === "playing" || document.body.dataset.player === "loading") ? pausar() : tocar(); }
 
-  audio.addEventListener("playing", () => setEstado("playing", "AO VIVO"));
+  audio.addEventListener("playing", () => { tentativas = 0; clearTimeout(vigia); setEstado("playing", "AO VIVO"); });
+  // Stream ao vivo caiu (sinal fraco, troca de wi-fi/4G, servidor): volta sozinho
+  audio.addEventListener("ended", () => reconectar("fim"));
+  audio.addEventListener("stalled", () => { clearTimeout(vigia); vigia = setTimeout(() => { if (audio.readyState < 3) reconectar("travou"); }, 8000); });
+  audio.addEventListener("waiting", () => { clearTimeout(vigia); vigia = setTimeout(() => { if (audio.readyState < 3) reconectar("esperando"); }, 10000); });
+  // Pausa que não veio do app (ligação, outro app tocando, fone desconectado): respeita e mostra pausado
+  audio.addEventListener("pause", () => { if (querTocar && !audio.ended && audio.error == null && document.body.dataset.player === "playing") { querTocar = false; setEstado("paused", "Pausado"); } });
+  window.addEventListener("online", () => { if (querTocar && audio.readyState < 3) reconectar("online"); });
   audio.addEventListener("waiting", () => setEstado("loading", "Carregando…"));
   let testeSemCors = false;
   audio.addEventListener("error", () => {
@@ -207,6 +231,7 @@
       audio.src = audio.src; audio.play().catch(() => {}); return;
     }
     if (testeSemCors) { testeSemCors = false; if (VOL_IOS && !semCors) audio.crossOrigin = "anonymous"; }   // falha de rede, não de CORS
+    if (querTocar && tentativas < 8) { reconectar("erro"); return; }
     setEstado("error", "Streaming indisponível no momento");
   });
   audio.addEventListener("playing", () => {
@@ -252,29 +277,23 @@
       if (pos < 0.04) pos = 0; else if (pos > 0.97) pos = 1;   // encaixa nas pontas (fácil zerar ou ir ao máximo no dedo)
       if (VOL_IOS) {
         // no iPhone, 100% toca direto; abaixo disso liga o ganho (precisa ser num toque — a barra é um toque)
-        if (ganho || (origem && pos < 1 && ligarGanho())) { ganho.gain.setValueAtTime(pos * pos, ctxAudio.currentTime); ganho.gain.value = pos * pos; acordarGanho(); }
+        if (ganho) { ganho.gain.setValueAtTime(pos * pos, ctxAudio.currentTime); ganho.gain.value = pos * pos; acordarGanho(); }
       } else audio.volume = pos * pos;
       lsSet(LS_VOL, String(pos));
       $$("[data-np=vol]").forEach((o) => { if (o !== origem) o.value = pos; o.style.setProperty("--pos", pos * 100 + "%"); o.setAttribute("aria-valuetext", Math.round(pos * 100) + "%"); });
       if (pos > 0 && audio.muted) definirMudo(false);
       document.body.classList.toggle("vol-zero", pos === 0);
     };
-    const salvo = parseFloat(lsGet(LS_VOL) ?? (VOL_IOS ? "1" : "0.8"));
+    const salvo = VOL_IOS ? 1 : parseFloat(lsGet(LS_VOL) ?? "0.8");   // iPhone: abre sempre em 100% (toca direto, sem desvio)
     $$("[data-np=vol]").forEach((v) => {
       v.value = isNaN(salvo) ? 0.8 : salvo;
       v.addEventListener("input", () => aplicarVolume(v.value, v));
       v.addEventListener("change", () => aplicarVolume(v.value, v));
       if (VOL_IOS) {   // liga o controle de volume no próprio toque da barra (regra do iPhone) e reaplica ao soltar
-        const ligar = () => { if (ligarGanho()) acordarGanho(); };
-        ["touchstart", "pointerdown"].forEach((ev) => v.addEventListener(ev, ligar, { passive: true }));
-        ["touchend", "pointerup"].forEach((ev) => v.addEventListener(ev, () => { ligar(); aplicarVolume(v.value, v); }, { passive: true }));
+        ["touchend", "pointerup", "click"].forEach((ev) => v.addEventListener(ev, () => { if (+v.value < 1 && ligarGanho()) acordarGanho(); aplicarVolume(v.value, v); }, { passive: true }));
       }
     });
     aplicarVolume(isNaN(salvo) ? 0.8 : salvo);
-    if (VOL_IOS && salvo < 1) {   // volume guardado abaixo de 100%: aplica no primeiro toque na tela
-      const aoTocar = () => { document.removeEventListener("pointerdown", aoTocar, true); if (ligarGanho()) { ganho.gain.value = salvo * salvo; acordarGanho(); } };
-      document.addEventListener("pointerdown", aoTocar, true);
-    }
     window.__volumeApp = { aplicarVolume, audio, get ganho() { return ganho; } };
     if (location.hash === "#diag") {
       const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#0f0;font:11px monospace;padding:6px;border-radius:6px;max-width:95vw;white-space:pre-wrap;pointer-events:none";
