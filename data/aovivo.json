@@ -1,1 +1,8 @@
-{"aoVivo": false, "videoId": null, "titulo": null, "embed": null, "canal": "https://www.youtube.com/channel/UCJhb-ezfHb2POTunV93JloQ"}
+{
+  "aoVivo": true,
+  "videoId": "BjH4IoTN5Po",
+  "titulo": "Jornal da Francês 13/11/2026",
+  "embed": true,
+  "canal": "https://www.youtube.com/channel/UCJhb-ezfHb2POTunV93JloQ",
+  "desde": "2026-11-13T13:45:53+00:00"
+}
