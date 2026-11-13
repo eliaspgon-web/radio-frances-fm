@@ -14,7 +14,9 @@
     "corAreia": "#13110f",
     "portal": "https://francesnews.com.br",
     "fundo": "https://francesfm.com.br/assets/images/1.png",
-    "tocandoBase": "https://francesfm.com.br/playing/"
+    "tocandoBase": "https://francesfm.com.br/playing/",
+    "radioInicial": "maceio",
+    "autoplay": true
   },
   "radios": [
     {

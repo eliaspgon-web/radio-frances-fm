@@ -158,6 +158,23 @@
     setEstado("loading", "Conectando…");
     audio.play().catch(() => setEstado("error", "Não foi possível conectar ao streaming"));
   }
+  // Toca sozinho ao abrir. Se o navegador bloquear som automático (regra do iPhone/Android),
+  // o primeiro toque em qualquer lugar da tela começa a rádio.
+  function autoTocar() {
+    const comecar = () => { soltar(); if (document.body.dataset.player !== "playing" && document.body.dataset.player !== "loading") tocar(); };
+    const soltar = () => { ["pointerdown", "keydown", "touchend"].forEach((ev) => document.removeEventListener(ev, comecar, true)); const d = $("#toque-ouvir"); if (d) d.remove(); };
+    if (!atual || !atual.stream) return;
+    audio.src = atual.stream;
+    setEstado("loading", "Conectando…");
+    audio.play().then(soltar).catch(() => {
+      setEstado("paused", "Toque para ouvir");
+      const d = document.createElement("div"); d.id = "toque-ouvir"; d.setAttribute("role", "button");
+      d.innerHTML = `<span>▶</span><b>Toque em qualquer lugar para ouvir</b><small>${esc(atual.nome)}${atual.frequencia ? " · " + esc(atual.frequencia) : ""}</small>`;
+      document.body.appendChild(d);
+      ["pointerdown", "keydown", "touchend"].forEach((ev) => document.addEventListener(ev, comecar, { capture: true, once: false }));
+    });
+  }
+
   function pausar() { audio.pause(); setEstado("paused", "Pausado"); }
   function alternar() { (document.body.dataset.player === "playing" || document.body.dataset.player === "loading") ? pausar() : tocar(); }
 
@@ -714,6 +731,10 @@
     const rs = rascunho.radios;
     body.innerHTML = `
       <div class="adm-head"><h3>Rádios e endereços de streaming</h3><button class="btn primary sm" data-add>+ Adicionar rádio</button></div>
+      <div class="adm-card"><div class="grid">
+        <label class="f"><span>Rádio que toca ao abrir o app</span><select data-ini>${rs.filter((r) => r.ativo !== false).map((r) => `<option value="${esc(r.id)}" ${(rascunho.site.radioInicial || "maceio") === r.id ? "selected" : ""}>${esc(r.nome)}${r.frequencia ? " · " + esc(r.frequencia) : ""}</option>`).join("")}</select></label>
+        <label class="f"><span>Tocar sozinho ao abrir</span><label class="switch" style="margin-top:8px"><input type="checkbox" data-auto ${rascunho.site.autoplay !== false ? "checked" : ""}><i></i><span>${"Ligado"}</span></label></label>
+      </div><p class="hint" style="margin:10px 0 0">iPhone e Android podem bloquear som automático; nesse caso o primeiro toque na tela já começa a rádio.</p></div>
       <p class="hint">Aceita links diretos de áudio (MP3/AAC/OGG, Icecast, Shoutcast, Zeno, StreamTheWorld). Use <b>Testar</b> para conferir se o stream responde.</p>
       <div class="adm-list">
         ${rs.map((r, i) => `
@@ -738,6 +759,8 @@
             </div>
           </article>`).join("") || `<p class="empty">Nenhuma rádio. Clique em “Adicionar rádio”.</p>`}
       </div>`;
+    $("[data-ini]", body).onchange = (e) => (rascunho.site.radioInicial = e.target.value);
+    $("[data-auto]", body).onchange = (e) => (rascunho.site.autoplay = e.target.checked);
     $("[data-add]", body).onclick = () => { rs.push({ id: uid(), nome: "Nova rádio", cidade: "", frequencia: "", stream: "", logo: rascunho.site.logo || "", ativo: true }); abaRadios(body); };
     $$(".adm-card", body).forEach((card) => {
       const i = +card.dataset.i, r = rs[i];
@@ -1083,9 +1106,11 @@
     aplicarTema();
     ligarControles();
     renderRadios();
-    const ult = lsGet(LS_LAST);
-    const ini = radiosAtivas().find((r) => r.id === ult) || radiosAtivas()[0];
+    // rádio de abertura: a definida no painel ("radioInicial", padrão 106.1 Maceió); sem ela, a última ouvida
+    const lista = radiosAtivas(), cfgIni = config.site.radioInicial || "maceio";
+    const ini = lista.find((r) => r.id === cfgIni) || lista.find((r) => r.id === lsGet(LS_LAST)) || lista[0];
     if (ini) selecionar(ini, false); else { renderAgora(); setEstado("idle", ""); }
+    if (ini && !PREVIEW && config.site.autoplay !== false) autoTocar();
     if (PREVIEW) { setEstado("paused", "Prévia do layout"); barraPrevia(); }
     renderContato();
     renderNoticias();

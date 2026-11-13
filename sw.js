@@ -1,6 +1,6 @@
 // Service worker: deixa o app abrir rápido e funcionar como aplicativo instalado.
 // Arquivos do app ficam em cache; dados (api/, data/) sempre buscam a versão mais nova.
-const VERSAO = "frances-v1";
+const VERSAO = "frances-v2";
 const ARQUIVOS = ["./", "index.html", "app.js", "base.css", "manifest.webmanifest",
   "assets/site/logo_frances_fm.svg", "assets/site/icone.svg", "assets/site/play.svg", "assets/site/pause.svg", "assets/site/live.svg",
   "assets/icons/icon-192.png", "assets/icons/icon-512.png"];
@@ -13,8 +13,9 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
-  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then((hit) => {
-    const rede = fetch(e.request).then((r) => { if (r.ok) caches.open(VERSAO).then((c) => c.put(e.request, r.clone())); return r; }).catch(() => hit);
-    return hit || rede;
-  }));
+  // rede primeiro: sempre a versão mais nova; o cache só entra quando estiver sem internet
+  e.respondWith(fetch(e.request).then((r) => {
+    if (r.ok) { const copia = r.clone(); caches.open(VERSAO).then((c) => c.put(e.request, copia)); }
+    return r;
+  }).catch(() => caches.match(e.request, { ignoreSearch: true })));
 });
