@@ -39,7 +39,7 @@
     },
     {
       "id": "maceio991",
-      "nome": "Francês FM Maceió 99.1",
+      "nome": "Francês FM Maceió",
       "cidade": "Maceió - AL",
       "frequencia": "99.1 FM",
       "stream": "https://playerservices.streamtheworld.com/api/livestream-redirect/FRANCESFM_CATAAC.aac",
