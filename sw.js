@@ -1,6 +1,6 @@
 // Service worker: deixa o app abrir rápido e funcionar como aplicativo instalado.
 // Arquivos do app ficam em cache; dados (api/, data/) sempre buscam a versão mais nova.
-const VERSAO = "frances-v9";
+const VERSAO = "frances-v10";
 const ARQUIVOS = ["./", "index.html", "app.js", "base.css", "manifest.webmanifest",
   "assets/site/logo_frances_fm.svg", "assets/site/icone.svg", "assets/site/play.svg", "assets/site/pause.svg", "assets/site/live.svg",
   "assets/icons/icon-192.png", "assets/icons/icon-512.png"];

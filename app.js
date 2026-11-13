@@ -19,29 +19,39 @@
   const ehAdmin = () => !!sessao && sessao.papel === "admin";
   const authH = (extra) => Object.assign({ "X-Admin-Token": sessao ? sessao.token : "" }, extra || {});
   let atual = null;
-  const audio = new Audio();
-  audio.preload = "none";
-  // iPhone/iPad ignoram audio.volume. Lá o volume passa por um controle de ganho (Web Audio),
-  // que precisa do stream com CORS liberado (os streams da StreamTheWorld liberam).
-  // Detecta pelo aparelho (alguns iOS "aceitam" o valor do volume mas não mudam o som) e também pela leitura do volume.
+  // iPhone/iPad ignoram audio.volume: lá a barra controla um ganho (Web Audio), com proteção —
+  // se o iPhone silenciar esse caminho, o app percebe e devolve o som sozinho.
   const EH_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const VOL_IOS = EH_IOS || (() => { const t = new Audio(); try { t.volume = 0.5; } catch (e) {} return t.volume === 1; })();
-  // O desvio pelo Web Audio foi desligado: no iPhone ele pode silenciar o som com o player "tocando".
-  // No iPhone o volume fica nos botões do aparelho (regra da Apple para páginas web).
-  const USAR_GANHO = false;
-  let ctxAudio = null, ganho = null, semCors = false;
+  const USAR_GANHO = true;
+  let ctxAudio = null, ganho = null, analisador = null, semCors = false, falhasGanho = 0;
+  const novoElemento = () => { const a = new Audio(); a.preload = "none"; if (VOL_IOS && USAR_GANHO && !semCors) a.crossOrigin = "anonymous"; return a; };
+  let audio = novoElemento();
+  const ouvintes = [];
+  const ouvir = (ev, fn) => { ouvintes.push([ev, fn]); audio.addEventListener(ev, fn); };
   function ligarGanho() {   // só dentro de um toque do usuário (regra do iOS para áudio)
     if (ganho) return true;
-    if (!USAR_GANHO || semCors || !VOL_IOS) return false;
+    if (!USAR_GANHO || semCors || !VOL_IOS || !audio.crossOrigin) return false;
     try {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
       ctxAudio = new AC();
-      ganho = ctxAudio.createGain();
-      ctxAudio.createMediaElementSource(audio).connect(ganho).connect(ctxAudio.destination);
-    } catch (e) { ganho = null; return false; }
+      ganho = ctxAudio.createGain(); analisador = ctxAudio.createAnalyser(); analisador.fftSize = 1024;
+      const fonte = ctxAudio.createMediaElementSource(audio);
+      fonte.connect(analisador); fonte.connect(ganho); ganho.connect(ctxAudio.destination);
+    } catch (e) { ganho = null; analisador = null; return false; }
     return true;
   }
   const acordarGanho = () => { if (ctxAudio && ctxAudio.state !== "running") ctxAudio.resume().catch(() => {}); };
+  // Troca por um elemento de áudio novo, sem desvio (devolve o som se o caminho do ganho falhar)
+  function trocarElemento() {
+    const velho = audio, mudo = velho.muted;
+    ouvintes.forEach(([e, f]) => velho.removeEventListener(e, f));
+    try { velho.pause(); velho.removeAttribute("src"); velho.load(); } catch (e) {}
+    try { if (ctxAudio) ctxAudio.close(); } catch (e) {}
+    ctxAudio = null; ganho = null; analisador = null;
+    audio = novoElemento(); audio.muted = mudo;
+    ouvintes.forEach(([e, f]) => audio.addEventListener(e, f));
+  }
 
   // ---------- utilidades ----------
   const $ = (s, r = document) => r.querySelector(s);
@@ -217,14 +227,14 @@
   function pausar() { querTocar = false; clearTimeout(vigia); audio.pause(); setEstado("paused", "Pausado"); }
   function alternar() { (document.body.dataset.player === "playing" || document.body.dataset.player === "loading") ? pausar() : tocar(); }
 
-  audio.addEventListener("playing", () => { querTocar = true; tentativas = 0; clearTimeout(vigia); clearTimeout(vigiaRede); setEstado("playing", "AO VIVO"); });
+  ouvir("playing", () => { querTocar = true; tentativas = 0; clearTimeout(vigia); clearTimeout(vigiaRede); setEstado("playing", "AO VIVO"); });
   // Stream ao vivo caiu (sinal fraco, troca de wi-fi/4G, servidor): volta sozinho
-  audio.addEventListener("ended", () => reconectar("fim"));
+  ouvir("ended", () => reconectar("fim"));
   let vigiaRede = null;   // separado do "vigia" para não cancelar uma reconexão já agendada
-  audio.addEventListener("stalled", () => { clearTimeout(vigiaRede); vigiaRede = setTimeout(() => { if (audio.readyState < 3) reconectar("travou"); }, 8000); });
-  audio.addEventListener("waiting", () => { clearTimeout(vigiaRede); vigiaRede = setTimeout(() => { if (audio.readyState < 3) reconectar("esperando"); }, 10000); });
+  ouvir("stalled", () => { clearTimeout(vigiaRede); vigiaRede = setTimeout(() => { if (audio.readyState < 3) reconectar("travou"); }, 8000); });
+  ouvir("waiting", () => { clearTimeout(vigiaRede); vigiaRede = setTimeout(() => { if (audio.readyState < 3) reconectar("esperando"); }, 10000); });
   // Pausa que não veio do app (ligação, outro app tocando, fone desconectado): respeita e mostra pausado
-  audio.addEventListener("pause", () => { if (querTocar && !audio.ended && audio.error == null && document.body.dataset.player === "playing") { querTocar = false; setEstado("paused", "Pausado"); } });
+  ouvir("pause", () => { if (querTocar && !audio.ended && audio.error == null && document.body.dataset.player === "playing") { querTocar = false; setEstado("paused", "Pausado"); } });
   let ultimoTempo = -1, parado = 0;
   setInterval(() => {
     const st = document.body.dataset.player;
@@ -235,10 +245,28 @@
     else parado = 0;
     ultimoTempo = audio.currentTime;
   }, 3000);
+  // Guarda do volume do iPhone: se o caminho do ganho ficar mudo com o player tocando, devolve o som
+  let mudoSeg = 0;
+  const amostra = new Float32Array(1024);
+  setInterval(() => {
+    if (!ganho || !querTocar || document.hidden || document.body.dataset.player !== "playing" || audio.muted) { mudoSeg = 0; return; }
+    let silencio = ctxAudio.state !== "running";
+    if (!silencio) { analisador.getFloatTimeDomainData(amostra); silencio = amostra.every((x) => x === 0); }
+    if (!silencio) { mudoSeg = 0; return; }
+    acordarGanho();
+    if (++mudoSeg < 3) return;   // ~4,5 s em silêncio total
+    mudoSeg = 0; falhasGanho++;
+    trocarElemento();
+    if (atual && atual.stream) { audio.src = atual.stream; audio.play().catch(() => {}); }
+    $$("[data-np=vol]").forEach((o) => { o.value = 1; o.style.setProperty("--pos", "100%"); });
+    if (falhasGanho >= 2) { semCors = true; trocarElemento(); if (atual && atual.stream) { audio.src = atual.stream; audio.play().catch(() => {}); } document.body.classList.add("vol-fixo"); toast("Neste aparelho use os botões de volume do celular"); }
+    else toast("Som restaurado");
+  }, 1500);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) acordarGanho(); });
   window.addEventListener("online", () => { if (querTocar && audio.readyState < 3) reconectar("online"); });
-  audio.addEventListener("waiting", () => setEstado("loading", "Carregando…"));
+  ouvir("waiting", () => setEstado("loading", "Carregando…"));
   let testeSemCors = false;
-  audio.addEventListener("error", () => {
+  ouvir("error", () => {
     if (!audio.src) return;
     if (audio.crossOrigin && !ganho && !testeSemCors) {   // pode ser stream sem CORS: tenta tocar sem ele
       testeSemCors = true; audio.removeAttribute("crossorigin");
@@ -248,10 +276,10 @@
     if (querTocar && tentativas < 8) { reconectar("erro"); return; }
     setEstado("error", "Streaming indisponível no momento");
   });
-  audio.addEventListener("playing", () => {
+  ouvir("playing", () => {
     if (testeSemCors) { testeSemCors = false; semCors = true; document.body.classList.add("vol-fixo"); }   // só tocou sem CORS: volume nos botões
   });
-  audio.addEventListener("play", acordarGanho);
+  ouvir("play", acordarGanho);
   ["touchend", "click"].forEach((ev) => document.addEventListener(ev, acordarGanho, true));   // iOS só libera o áudio em toques
   document.addEventListener("visibilitychange", acordarGanho);
 
@@ -308,7 +336,7 @@
       }
     });
     aplicarVolume(isNaN(salvo) ? 0.8 : salvo);
-    window.__volumeApp = { aplicarVolume, audio, get ganho() { return ganho; }, get estado() { return { querTocar, tentativas, parado, ultimoTempo }; } };
+    window.__volumeApp = { aplicarVolume, get audio() { return audio; }, trocarElemento, get ganho() { return ganho; }, get estado() { return { querTocar, tentativas, parado, ultimoTempo }; } };
     if (location.hash === "#diag") {
       const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#0f0;font:11px monospace;padding:6px;border-radius:6px;max-width:95vw;white-space:pre-wrap;pointer-events:none";
       document.body.appendChild(d);
