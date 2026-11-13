@@ -356,12 +356,12 @@
     $$("[data-np=song]").forEach((e) => (e.textContent = texto || (r ? r.slogan || config.site.slogan || "" : "")));
     $$("[data-np=track]").forEach((e) => (e.textContent = m ? m.titulo : ((r && r.slogan) || config.site.slogan || "")));
     $$("[data-np=artist]").forEach((e) => (e.textContent = m ? m.artista : ""));
-    // Sem capa (ou sem nenhum metadado): a bola da logo da rádio
+    // Música no RDS sem imagem: a bola da logo da rádio. Sem informação de música: sem capa.
     const bola = safeUrl((r && r.logo) || (config.site && config.site.icone) || "") || "assets/site/icone.svg";
     $$("[data-np=cover]").forEach((e) => {
       const temCapa = !!(m && m.capa);
-      e.innerHTML = r ? `<img src="${esc(temCapa ? m.capa : bola)}" alt="${esc(temCapa ? "Capa: " + m.titulo : (r.nome || "Logo da rádio"))}" ${temCapa ? `onerror="this.onerror=null;this.src='${esc(bola)}';this.parentNode.classList.add('bola')"` : ""}>` : "";
-      e.classList.toggle("on", !!r); e.classList.toggle("bola", !!r && !temCapa);
+      e.innerHTML = m ? `<img src="${esc(temCapa ? m.capa : bola)}" alt="${esc(temCapa ? "Capa: " + m.titulo : ((r && r.nome) || "Logo da rádio"))}" ${temCapa ? `onerror="this.onerror=null;this.src='${esc(bola)}';this.parentNode.classList.add('bola')"` : ""}>` : "";
+      e.classList.toggle("on", !!m); e.classList.toggle("bola", !!m && !temCapa);
     });
     document.body.classList.toggle("has-song", !!texto);
     if (chave !== npChave && "mediaSession" in navigator && r) {   // tela de bloqueio / central de controle
