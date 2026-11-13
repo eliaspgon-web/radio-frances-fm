@@ -8,7 +8,7 @@ App web instalável (PWA) para iPhone e Android, com o visual do francesfm.com.b
 - **Notícias** — carrossel com as **5 últimas do Francês News** (RSS `https://francesnews.com.br/feed`), atualizado a cada 10 min. A capa de cada matéria é importada para o servidor (`uploads/noticias/`). Também aceita Instagram, outros RSS ou os dois juntos (painel → Notícias).
 - **WhatsApp** — Peça sua música, Mande seu alô, Comercial, Promocional e Jornalismo.
 - **Painel gerencial** (⚙ no topo ou no menu ☰) — rádios/streams/logos, notícias e Instagram, WhatsApp, cores/paletas, fundo.
-- **📊 Audiência** — no painel: conectados e ouvintes **ao vivo** (atualiza a cada 10 s), pico simultâneo, ouvintes únicos, horas ouvidas, tempo médio, rádio e aparelho; relatórios por dia, 7 e 30 dias ou datas livres, com gráficos; **imprimir / salvar em PDF** e **CSV**. Medição anônima (código aleatório por aparelho, sem IP ou dado pessoal). Requer o app no servidor com PHP.
+- **📊 Audiência** — no painel: conectados e ouvintes **ao vivo** (atualiza a cada 10 s), pico simultâneo, ouvintes únicos, horas ouvidas, tempo médio, rádio e aparelho; relatórios por dia, 7 e 30 dias ou datas livres, **de todas as rádios ou de cada rádio separada**, com gráficos; **imprimir / salvar em PDF** e **CSV**. Medição anônima (código aleatório por aparelho, sem IP ou dado pessoal). Requer o app no servidor com PHP.
 - **Usuários e senhas** — login por usuário; níveis **Administrador** (tudo, inclusive usuários e Instagram) e **Editor** (conteúdo); cada um troca a própria senha; bloqueio de 15 min após 5 tentativas erradas; sessão de 12 h.
 
 ## Arquivos
@@ -45,6 +45,9 @@ Para atualizar depois: baixe o ZIP novo e envie por cima, **sem apagar** `data/`
 4. As notícias do Francês News e as capas são atualizadas sozinhas **a cada 30 min** pela rotina `.github/workflows/noticias.yml` (aba **Actions → Atualizar notícias → Run workflow** roda na hora).
 
 No Pages não há PHP: o painel, usuários, Instagram, “VEJA” com detecção de live e “Tocando agora” completos funcionam só no servidor com PHP. Para mudar rádios/cores no Pages, edite `data/config.json` no GitHub.
+
+## Volume
+A barra de volume controla o som do app (curva de áudio: metade da barra = metade do volume percebido). O som final é o volume do celular × a barra. Páginas web não podem ler nem mudar o volume do sistema; por isso a barra não acompanha os botões físicos, e no iPhone (que não permite volume pela página) ela é substituída pelo aviso “Volume nos botões do celular”.
 
 ## Instalar no celular
 - **Android (Chrome):** abra o site → menu ⋮ → **Instalar app** (ou "Adicionar à tela inicial").
