@@ -239,7 +239,7 @@ body[data-player=playing] .station.active .station-eq{display:inline-flex}
 /* ===== Volume ===== */
 input[type=range][data-np=vol]{height:28px;cursor:pointer;touch-action:none}
 body.vol-fixo [data-np=vol]{display:none}
-body.vol-fixo .vol::after{content:"Volume nos botões do celular";font-size:.72rem;white-space:nowrap}
+body.vol-fixo .vol::after{content:"Volume: botões laterais do iPhone";font-size:.74rem;white-space:nowrap;font-weight:600}
 body.vol-fixo .vol>span{display:none}
 
 /* ===== Capa da música tocando ===== */

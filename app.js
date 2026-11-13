@@ -23,7 +23,8 @@
   // se o iPhone silenciar esse caminho, o app percebe e devolve o som sozinho.
   const EH_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const VOL_IOS = EH_IOS || (() => { const t = new Audio(); try { t.volume = 0.5; } catch (e) {} return t.volume === 1; })();
-  const USAR_GANHO = true;
+  // Desligado de vez: no iPhone o modo CORS + Web Audio faz o stream picotar (toca 1–2 s e fica "Carregando…").
+  const USAR_GANHO = false;
   let ctxAudio = null, ganho = null, analisador = null, semCors = false, falhasGanho = 0;
   const novoElemento = () => { const a = new Audio(); a.preload = "none"; if (VOL_IOS && USAR_GANHO && !semCors) a.crossOrigin = "anonymous"; return a; };
   let audio = novoElemento();
