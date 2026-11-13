@@ -23,7 +23,9 @@
   audio.preload = "none";
   // iPhone/iPad ignoram audio.volume. Lá o volume passa por um controle de ganho (Web Audio),
   // que precisa do stream com CORS liberado (os streams da StreamTheWorld liberam).
-  const VOL_IOS = (() => { const t = new Audio(); try { t.volume = 0.5; } catch (e) {} return t.volume === 1; })();
+  // Detecta pelo aparelho (alguns iOS "aceitam" o valor do volume mas não mudam o som) e também pela leitura do volume.
+  const EH_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const VOL_IOS = EH_IOS || (() => { const t = new Audio(); try { t.volume = 0.5; } catch (e) {} return t.volume === 1; })();
   if (VOL_IOS) audio.crossOrigin = "anonymous";
   let ctxAudio = null, ganho = null, semCors = false;
   function ligarGanho() {   // só dentro de um toque do usuário (regra do iOS para áudio)
@@ -211,6 +213,7 @@
     if (testeSemCors) { testeSemCors = false; semCors = true; document.body.classList.add("vol-fixo"); }   // só tocou sem CORS: volume nos botões
   });
   audio.addEventListener("play", acordarGanho);
+  ["touchend", "click"].forEach((ev) => document.addEventListener(ev, acordarGanho, true));   // iOS só libera o áudio em toques
   document.addEventListener("visibilitychange", acordarGanho);
 
   function mediaSession() {
@@ -249,8 +252,7 @@
       if (pos < 0.04) pos = 0; else if (pos > 0.97) pos = 1;   // encaixa nas pontas (fácil zerar ou ir ao máximo no dedo)
       if (VOL_IOS) {
         // no iPhone, 100% toca direto; abaixo disso liga o ganho (precisa ser num toque — a barra é um toque)
-        if (pos < 1 && (ganho || (origem && ligarGanho()))) { ganho.gain.value = pos * pos; acordarGanho(); }
-        else if (ganho) ganho.gain.value = pos * pos;
+        if (ganho || (origem && pos < 1 && ligarGanho())) { ganho.gain.setValueAtTime(pos * pos, ctxAudio.currentTime); ganho.gain.value = pos * pos; acordarGanho(); }
       } else audio.volume = pos * pos;
       lsSet(LS_VOL, String(pos));
       $$("[data-np=vol]").forEach((o) => { if (o !== origem) o.value = pos; o.style.setProperty("--pos", pos * 100 + "%"); o.setAttribute("aria-valuetext", Math.round(pos * 100) + "%"); });
@@ -261,13 +263,24 @@
     $$("[data-np=vol]").forEach((v) => {
       v.value = isNaN(salvo) ? 0.8 : salvo;
       v.addEventListener("input", () => aplicarVolume(v.value, v));
+      v.addEventListener("change", () => aplicarVolume(v.value, v));
+      if (VOL_IOS) {   // liga o controle de volume no próprio toque da barra (regra do iPhone) e reaplica ao soltar
+        const ligar = () => { if (ligarGanho()) acordarGanho(); };
+        ["touchstart", "pointerdown"].forEach((ev) => v.addEventListener(ev, ligar, { passive: true }));
+        ["touchend", "pointerup"].forEach((ev) => v.addEventListener(ev, () => { ligar(); aplicarVolume(v.value, v); }, { passive: true }));
+      }
     });
     aplicarVolume(isNaN(salvo) ? 0.8 : salvo);
     if (VOL_IOS && salvo < 1) {   // volume guardado abaixo de 100%: aplica no primeiro toque na tela
       const aoTocar = () => { document.removeEventListener("pointerdown", aoTocar, true); if (ligarGanho()) { ganho.gain.value = salvo * salvo; acordarGanho(); } };
       document.addEventListener("pointerdown", aoTocar, true);
     }
-    window.__volumeApp = { aplicarVolume, audio, get ganho() { return ganho; } };   // usado nos testes automáticos
+    window.__volumeApp = { aplicarVolume, audio, get ganho() { return ganho; } };
+    if (location.hash === "#diag") {
+      const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#0f0;font:11px monospace;padding:6px;border-radius:6px;max-width:95vw;white-space:pre-wrap;pointer-events:none";
+      document.body.appendChild(d);
+      setInterval(() => { d.textContent = `iOS:${EH_IOS} volIOS:${VOL_IOS} semCors:${semCors} cross:${audio.crossOrigin}\nbarra:${($("[data-np=vol]") || {}).value} audio.volume:${audio.volume.toFixed(2)} mudo:${audio.muted}\nganho:${ganho ? ganho.gain.value.toFixed(2) : "-"} ctx:${ctxAudio ? ctxAudio.state : "-"} player:${document.body.dataset.player}`; }, 500);
+    }   // usado nos testes automáticos
     $$("[data-watch]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); abrirVideo(); }));
     // 🔈 silencia / ativa · 🔊 ativa o som (e começa a tocar se estiver parado)
     $$("[data-np=mute]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); definirMudo(!audio.muted); }));
