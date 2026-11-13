@@ -29,7 +29,12 @@ def main():
     import os
     teste = os.environ.get("CANAL_TESTE", "").strip()   # só para testar a detecção em outro canal (não grava nada)
     if teste:
-        print("TESTE", teste, "→", analisar(baixar(f"https://www.youtube.com/channel/{teste}/live"))); return
+        pg = baixar(f"https://www.youtube.com/channel/{teste}/live")
+        import re as _r
+        print("TESTE", teste, "→", analisar(pg))
+        print("DEBUG tam=", len(pg), "| title=", (_r.search(r"<title>(.*?)</title>", pg, _r.S) or [None, None])[1], "| canonical=", (_r.search(r'rel="canonical" href="([^"]+)"', pg) or [None, None])[1],
+              "| consent=", "consent.youtube" in pg or "before you continue" in pg.lower(), "| isLiveNow=", pg.count('"isLiveNow"'), "| videoId=", _r.findall(r'"videoId":"([\w-]{11})"', pg)[:3], "| liveBadge=", pg.count("BADGE_STYLE_TYPE_LIVE_NOW"))
+        return
     yt = str(CFG.get("site", {}).get("youtube", ""))
     m = re.search(r"(UC[\w-]{22})", yt); h = re.search(r"@([\w.\-]+)", yt)
     base = f"https://www.youtube.com/channel/{m.group(1)}" if m else (f"https://www.youtube.com/@{h.group(1)}" if h else None)
