@@ -15,6 +15,7 @@ def baixar(url):
         return r.read().decode("utf-8", "replace")
 
 def analisar(pagina):
+    """Analisa a página de um vídeo (watch) ou a /live do canal."""
     vid = None
     m = re.search(r'<link rel="canonical" href="https://www\.youtube\.com/watch\?v=([\w-]{11})"', pagina)
     if m: vid = m.group(1)
@@ -25,23 +26,55 @@ def analisar(pagina):
     embed = '"playableInEmbed":false' not in pagina   # o canal pode proibir assistir fora do YouTube
     return {"aoVivo": ao_vivo, "videoId": vid if ao_vivo else None, "titulo": titulo if ao_vivo else None, "embed": embed if ao_vivo else None}
 
+def candidatos(base):
+    """IDs de vídeo que podem ser a transmissão: a /live do canal e os marcados AO VIVO na aba de transmissões."""
+    ids = []
+    try:
+        pg = baixar(base + "/live")
+        r = analisar(pg)
+        if r["aoVivo"]: return [r["videoId"]], r
+        m = re.search(r'<link rel="canonical" href="https://www\.youtube\.com/watch\?v=([\w-]{11})"', pg)
+        if m: ids.append(m.group(1))
+        ids += re.findall(r'"videoId":"([\w-]{11})"', pg)[:2]
+    except Exception as e:
+        print("Aviso /live:", e)
+    try:
+        pg = baixar(base + "/streams")
+        for bloco in pg.split('"videoRenderer":{')[1:]:
+            bloco = bloco[:6000]
+            if "BADGE_STYLE_TYPE_LIVE_NOW" in bloco or '"style":"LIVE"' in bloco or '"iconType":"LIVE"' in bloco:
+                m = re.search(r'"videoId":"([\w-]{11})"', bloco)
+                if m: ids.append(m.group(1))
+    except Exception as e:
+        print("Aviso /streams:", e)
+    vistos = []
+    for v in ids:
+        if v not in vistos: vistos.append(v)
+    return vistos[:5], None
+
+def detectar(base):
+    ids, pronto = candidatos(base)
+    if pronto: return pronto
+    for v in ids:   # confirma na página do vídeo: está ao vivo agora? pode embutir?
+        try:
+            r = analisar(baixar(f"https://www.youtube.com/watch?v={v}"))
+            if r["aoVivo"]: return r
+        except Exception as e:
+            print("Aviso watch:", e)
+    return {"aoVivo": False, "videoId": None, "titulo": None, "embed": None}
+
 def main():
     import os
     teste = os.environ.get("CANAL_TESTE", "").strip()   # só para testar a detecção em outro canal (não grava nada)
     if teste:
-        pg = baixar(f"https://www.youtube.com/channel/{teste}/live")
-        import re as _r
-        print("TESTE", teste, "→", analisar(pg))
-        print("DEBUG tam=", len(pg), "| title=", (_r.search(r"<title>(.*?)</title>", pg, _r.S) or [None, None])[1], "| canonical=", (_r.search(r'rel="canonical" href="([^"]+)"', pg) or [None, None])[1],
-              "| consent=", "consent.youtube" in pg or "before you continue" in pg.lower(), "| isLiveNow=", pg.count('"isLiveNow"'), "| videoId=", _r.findall(r'"videoId":"([\w-]{11})"', pg)[:3], "| liveBadge=", pg.count("BADGE_STYLE_TYPE_LIVE_NOW"))
-        return
+        print("TESTE", teste, "→", detectar(f"https://www.youtube.com/channel/{teste}")); return
     yt = str(CFG.get("site", {}).get("youtube", ""))
     m = re.search(r"(UC[\w-]{22})", yt); h = re.search(r"@([\w.\-]+)", yt)
     base = f"https://www.youtube.com/channel/{m.group(1)}" if m else (f"https://www.youtube.com/@{h.group(1)}" if h else None)
     if not base:
         print("Canal do YouTube não configurado."); return
     try:
-        r = analisar(baixar(base + "/live"))
+        r = detectar(base)
     except Exception as e:
         print("Falha ao consultar o YouTube:", e); return   # mantém o último estado conhecido
     r["canal"] = base
