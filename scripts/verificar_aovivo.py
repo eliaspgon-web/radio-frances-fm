@@ -52,7 +52,26 @@ def candidatos(base):
         if v not in vistos: vistos.append(v)
     return vistos[:5], None
 
+def api_youtube(canal_id, chave):
+    """YouTube Data API v3 (cota baixa: ~2 unidades por verificação)."""
+    import urllib.parse
+    q = lambda u: json.loads(baixar(u))
+    up = "UU" + canal_id[2:]
+    itens = q("https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=5&playlistId=" + up + "&key=" + chave).get("items", [])
+    ids = ",".join(i["contentDetails"]["videoId"] for i in itens)
+    if not ids: return {"aoVivo": False, "videoId": None, "titulo": None, "embed": None}
+    for v in q("https://www.googleapis.com/youtube/v3/videos?part=snippet,status,liveStreamingDetails&id=" + ids + "&key=" + chave).get("items", []):
+        if v.get("snippet", {}).get("liveBroadcastContent") == "live":
+            return {"aoVivo": True, "videoId": v["id"], "titulo": v["snippet"].get("title"), "embed": v.get("status", {}).get("embeddable", True)}
+    return {"aoVivo": False, "videoId": None, "titulo": None, "embed": None}
+
 def detectar(base):
+    import os
+    chave = os.environ.get("YT_API_KEY", "").strip()
+    m = re.search(r"(UC[\w-]{22})", base)
+    if chave and m:
+        try: return api_youtube(m.group(1), chave)
+        except Exception as e: print("Aviso API:", e)
     ids, pronto = candidatos(base)
     if pronto: return pronto
     for v in ids:   # confirma na página do vídeo: está ao vivo agora? pode embutir?
@@ -67,13 +86,7 @@ def main():
     import os
     teste = os.environ.get("CANAL_TESTE", "").strip()   # só para testar a detecção em outro canal (não grava nada)
     if teste:
-        print("TESTE", teste, "→", detectar(f"https://www.youtube.com/channel/{teste}"))
-        ids, _ = candidatos(f"https://www.youtube.com/channel/{teste}"); print("DEBUG candidatos", ids)
-        for v in ids[:2]:
-            pg = baixar(f"https://www.youtube.com/watch?v={v}")
-            print("DEBUG watch", v, "tam", len(pg), "canon", (re.search(r'rel="canonical" href="([^"]+)"', pg) or [0, None])[1], "isLiveNow", pg.count('"isLiveNow":true'), "isLive", pg.count('"isLive":true'),
-                  "bot", "confirm you" in pg.lower() or "not a bot" in pg.lower(), "status", (re.search(r'"playabilityStatus":\{"status":"(\w+)"', pg) or [0, None])[1], "liveContent", pg.count('"isLiveContent":true'))
-        return
+        print("TESTE", teste, "→", detectar(f"https://www.youtube.com/channel/{teste}")); return
     yt = str(CFG.get("site", {}).get("youtube", ""))
     m = re.search(r"(UC[\w-]{22})", yt); h = re.search(r"@([\w.\-]+)", yt)
     base = f"https://www.youtube.com/channel/{m.group(1)}" if m else (f"https://www.youtube.com/@{h.group(1)}" if h else None)

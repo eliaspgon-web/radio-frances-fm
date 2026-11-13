@@ -521,8 +521,41 @@
 
   const idCanalYT = () => { const m = String((config.site && config.site.youtube) || "").match(/UC[\w-]{22}/); return m ? m[0] : ""; };
 
-  let vigiaLive = null;
-  function telaVideo(ativa, vivo) {
+  let vigiaLive = null, ytApi = null;
+  function carregarYT() {
+    if (window.YT && YT.Player) return Promise.resolve();
+    if (ytApi) return ytApi;
+    ytApi = new Promise((ok, erro) => {
+      const ant = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { if (ant) try { ant(); } catch (e) {} ok(); };
+      const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; sc.onerror = () => { ytApi = null; erro(new Error("api")); };
+      document.head.appendChild(sc);
+      setTimeout(() => { if (!(window.YT && YT.Player)) { ytApi = null; erro(new Error("timeout")); } }, 10000);
+    });
+    return ytApi;
+  }
+  // Descobre a live do canal usando o player oficial escondido e sem som: devolve {videoId, titulo} ou null
+  function sondarLive(canalId) {
+    return carregarYT().then(() => new Promise((ok) => {
+      const box = document.createElement("div");
+      box.style.cssText = "position:fixed;left:-9999px;top:0;width:320px;height:180px;opacity:0;pointer-events:none";
+      const alvo = document.createElement("div"); box.appendChild(alvo); document.body.appendChild(box);
+      let fim = false, pl = null;
+      const terminar = (r) => { if (fim) return; fim = true; try { pl && pl.destroy(); } catch (e) {} box.remove(); ok(r); };
+      const achou = () => { try { const d = pl.getVideoData(); if (d && d.video_id) return terminar({ videoId: d.video_id, titulo: d.title || "" }); } catch (e) {} };
+      pl = new YT.Player(alvo, {
+        width: 320, height: 180, videoId: "live_stream",
+        playerVars: { channel: canalId, autoplay: 1, mute: 1, playsinline: 1, controls: 0 },
+        events: {
+          onReady: () => { achou(); setTimeout(() => { achou(); if (!fim) setTimeout(() => { achou(); terminar(null); }, 3500); }, 1500); },
+          onStateChange: (e) => { if (e.data === 1 || e.data === 3) achou(); },
+          onError: () => terminar(null),
+        },
+      });
+      setTimeout(() => terminar(null), 14000);
+    })).catch(() => undefined);   // undefined = não deu para sondar (sem internet/API bloqueada)
+  }
+  function telaVideo(ativa, vivo, sondado) {
     clearInterval(vigiaLive);
     const id = idCanalYT(), canal = urlCanal();
     const temLive = !!(vivo && vivo.aoVivo && vivo.videoId);
@@ -541,21 +574,37 @@
     } else if (semEmbed) {
       corpo = `<div class="rm-espera"><span class="live-pill">● AO VIVO AGORA</span><h3>${esc(vivo.titulo || "Transmissão ao vivo")}</h3><p>O canal só permite assistir esta transmissão no YouTube.</p><a class="btn primary" href="${esc(linkLive)}" target="_blank" rel="noopener">▶ Assistir ao vivo no YouTube</a></div>`;
       info = "";
-    } else if (sabeQueNao) {
+    } else if (!sondado && id) {
+      corpo = `<div class="rm-espera"><span class="rm-pulso"></span><h3>Procurando a transmissão ao vivo…</h3><p>Só um instante.</p></div>`;
+      info = "";
+    } else if (sondado === true || (sabeQueNao && sondado !== "falhou")) {
       corpo = `<div class="rm-espera"><span class="rm-pulso"></span><h3>O canal não está ao vivo agora</h3><p>Deixe esta tela aberta: quando a transmissão começar, ela abre aqui sozinha.</p><button class="btn primary" data-v="videos">▶ Ver os últimos vídeos</button></div>`;
       info = `<small class="rm-dica">Verificando a cada minuto…</small>`;
-    } else {   // sem informação (falha de rede): tenta a live do canal direto
+    } else {   // não deu para sondar: tenta a live do canal direto
       corpo = iframe(`https://www.youtube.com/embed/live_stream?channel=${id}&autoplay=1&rel=0&playsinline=1`);
       info = `<span class="live-pill">● AO VIVO</span><strong>Transmissão ao vivo</strong><a href="${esc(linkLive)}" target="_blank" rel="noopener">Abrir no YouTube ↗</a>`;
     }
     const m = modal(`${abas}${corpo}${info ? `<div class="rm-info">${info}</div>` : ""}`, "video");
     $$("[data-v]", m).forEach((b) => (b.onclick = () => telaVideo(b.dataset.v, estadoVideo || vivo)));
+    const aberta = () => m.classList.contains("open") && m.classList.contains("video") && $("[data-v=vivo].on", m);
+    const comLive = (r) => { estadoVideo = { aoVivo: true, videoId: r.videoId, titulo: r.titulo || (estadoVideo && estadoVideo.titulo) || "", embed: true, _t: Date.now() }; marcarVideo(estadoVideo); telaVideo("vivo", estadoVideo); };
+    // primeira tentativa: pergunta ao player oficial se o canal está ao vivo
+    if (ativa === "vivo" && !temLive && !semEmbed && !sondado && id) {
+      sondarLive(id).then((r) => {
+        if (!aberta()) return;
+        if (r) return comLive(r);
+        if (r === undefined) return telaVideo("vivo", { aoVivo: null }, "falhou");   // não deu para sondar: usa o player do canal direto
+        telaVideo("vivo", vivo, true);
+      });
+    }
     // insiste na transmissão: com a aba "Ao vivo" aberta sem live, confere de minuto em minuto e abre quando começar
-    if (ativa === "vivo" && !temLive) {
+    if (ativa === "vivo" && !temLive && sondado === true) {
       vigiaLive = setInterval(async () => {
-        if (!m.classList.contains("open") || !m.classList.contains("video")) return clearInterval(vigiaLive);
+        if (!aberta()) return clearInterval(vigiaLive);
         const v = await obterAoVivo();
-        if (v) { estadoVideo = v; marcarVideo(v); if (v.aoVivo && v.videoId) telaVideo("vivo", v); }
+        if (v && v.aoVivo && v.videoId) { estadoVideo = v; marcarVideo(v); return telaVideo("vivo", v); }
+        const r = id ? await sondarLive(id) : null;
+        if (r && aberta()) comLive(r);
       }, 60000);
     }
   }

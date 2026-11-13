@@ -77,3 +77,10 @@ Com o app tocando, o CarPlay e o Android Auto mostram a tela "Tocando agora" com
 - Avançar e voltar trocam de rádio.
 
 Um ícone próprio na tela do carro, abrindo sozinho quando o celular conecta, só existe em app nativo publicado na App Store e na Google Play: a Apple exige a permissão de áudio para CarPlay.
+
+## VEJA AO VIVO
+Quando o ouvinte toca em VEJA AO VIVO, o app pergunta ao player oficial do YouTube, no próprio celular, se o canal está transmitindo:
+- se estiver, a transmissão abre dentro do app;
+- se não estiver, aparece o aviso "O canal não está ao vivo agora". O app confere de novo a cada minuto e abre a live sozinho quando ela começar.
+
+Opcional, para o botão já mostrar "Ao vivo agora" antes do toque: crie uma chave gratuita da **YouTube Data API v3** no Google Cloud Console e cadastre no GitHub em Settings › Secrets and variables › Actions, com o nome **YT_API_KEY**. Com a chave, o GitHub confere o canal a cada 5 minutos. Sem a chave, o YouTube bloqueia essa verificação a partir dos servidores do GitHub.

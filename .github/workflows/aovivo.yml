@@ -28,6 +28,7 @@ jobs:
       - run: python3 scripts/verificar_aovivo.py
         env:
           CANAL_TESTE: ${{ github.event.inputs.canal_teste }}
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
       - name: Salvar no repositório (se mudou)
         run: |
           git add data/aovivo.json 2>/dev/null || true
