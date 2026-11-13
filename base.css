@@ -239,7 +239,10 @@ body[data-player=playing] .station.active .station-eq{display:inline-flex}
 /* ===== Volume ===== */
 input[type=range][data-np=vol]{height:28px;cursor:pointer;touch-action:none}
 body.vol-fixo [data-np=vol]{display:none}
-body.vol-fixo .vol::after{content:"Volume: botões laterais do iPhone";font-size:.74rem;white-space:nowrap;font-weight:600}
+body.vol-fixo .vol::after{content:none}
+body.vol-fixo [data-np=loud]{display:none}
+body.vol-fixo .vol{padding:0;width:50px;justify-content:center;gap:0}
+body.vol-fixo .vol [data-np=mute]{font-size:1.25rem;width:50px;height:50px;display:grid;place-items:center}
 body.vol-fixo .vol>span{display:none}
 
 /* ===== Capa da música tocando ===== */

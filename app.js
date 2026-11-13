@@ -304,7 +304,7 @@
   function definirMudo(m) { audio.muted = m; pintarMudo(); toast(m ? "Som desligado" : "Som ligado"); }
   function pintarMudo() {
     document.body.classList.toggle("mudo", audio.muted);
-    $$("[data-np=mute]").forEach((b) => { b.textContent = audio.muted ? "🔇" : "🔈"; b.setAttribute("aria-label", audio.muted ? "Ativar o som" : "Silenciar"); b.setAttribute("aria-pressed", audio.muted ? "true" : "false"); });
+    $$("[data-np=mute]").forEach((b) => { b.textContent = audio.muted ? "🔇" : (document.body.classList.contains("vol-fixo") ? "🔊" : "🔈"); b.setAttribute("aria-label", audio.muted ? "Ativar o som" : "Silenciar"); b.setAttribute("aria-pressed", audio.muted ? "true" : "false"); });
   }
 
   function ligarControles() {
@@ -345,7 +345,13 @@
     }   // usado nos testes automáticos
     $$("[data-watch]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); abrirVideo(); }));
     // 🔈 silencia / ativa · 🔊 ativa o som (e começa a tocar se estiver parado)
-    $$("[data-np=mute]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); definirMudo(!audio.muted); }));
+    $$("[data-np=mute]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const ligar = audio.muted;
+      definirMudo(!audio.muted);
+      // iPhone: o autofalante é o único controle — ao ativar o som, começa a tocar se estiver parado
+      if (ligar && document.body.classList.contains("vol-fixo") && document.body.dataset.player !== "playing" && document.body.dataset.player !== "loading") tocar();
+    }));
     $$("[data-np=loud]").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
       definirMudo(false);
