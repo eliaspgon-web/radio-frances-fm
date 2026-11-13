@@ -199,6 +199,12 @@
     selecionar(l[(i + d + l.length) % l.length], true);
   }
 
+  function definirMudo(m) { audio.muted = m; pintarMudo(); toast(m ? "Som desligado" : "Som ligado"); }
+  function pintarMudo() {
+    document.body.classList.toggle("mudo", audio.muted);
+    $$("[data-np=mute]").forEach((b) => { b.textContent = audio.muted ? "🔇" : "🔈"; b.setAttribute("aria-label", audio.muted ? "Ativar o som" : "Silenciar"); b.setAttribute("aria-pressed", audio.muted ? "true" : "false"); });
+  }
+
   function ligarControles() {
     $$("[data-np=play]").forEach((b) => b.addEventListener("click", alternar));
     $$("[data-np=next]").forEach((b) => b.addEventListener("click", () => pular(1)));
@@ -213,7 +219,15 @@
       v.addEventListener("input", () => { audio.volume = +v.value; lsSet(LS_VOL, v.value); $$("[data-np=vol]").forEach((o) => o !== v && (o.value = v.value)); });
     });
     $$("[data-watch]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); abrirVideo(); }));
-    $$("[data-np=mute]").forEach((b) => b.addEventListener("click", () => { audio.muted = !audio.muted; b.classList.toggle("muted", audio.muted); }));
+    // 🔈 silencia / ativa · 🔊 ativa o som (e começa a tocar se estiver parado)
+    $$("[data-np=mute]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); definirMudo(!audio.muted); }));
+    $$("[data-np=loud]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      definirMudo(false);
+      if (audio.volume < 0.15 && !document.body.classList.contains("vol-fixo")) { audio.volume = 0.8; lsSet(LS_VOL, "0.8"); $$("[data-np=vol]").forEach((v) => (v.value = 0.8)); }
+      if (document.body.dataset.player !== "playing" && document.body.dataset.player !== "loading") tocar();
+    }));
+    pintarMudo();
     $$("[data-open-admin]").forEach((b) => b.addEventListener("click", () => { $$(".sheet.open").forEach((x) => x.classList.remove("open")); abrirAdmin(); }));
     $$("[data-toggle]").forEach((b) => b.addEventListener("click", () => { const t = $(b.dataset.toggle); if (t) t.classList.toggle("open"); }));
     $$(".sheet").forEach((sh) => sh.addEventListener("click", (e) => { if (e.target === sh || e.target.closest("[data-close-sheet]")) sh.classList.remove("open"); }));
