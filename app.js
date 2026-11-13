@@ -231,7 +231,7 @@
     $$("[data-open-admin]").forEach((b) => b.addEventListener("click", () => { $$(".sheet.open").forEach((x) => x.classList.remove("open")); abrirAdmin(); }));
     $$("[data-toggle]").forEach((b) => b.addEventListener("click", () => { const t = $(b.dataset.toggle); if (t) t.classList.toggle("open"); }));
     $$(".sheet").forEach((sh) => sh.addEventListener("click", (e) => { if (e.target === sh || e.target.closest("[data-close-sheet]")) sh.classList.remove("open"); }));
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") $$(".sheet.open").forEach((x) => x.classList.remove("open")); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $$(".sheet.open").forEach((x) => x.classList.remove("open")); const m = $("#ra-modal.open"); if (m && m._fechar) m._fechar(); } });
     document.addEventListener("keydown", (e) => { if (e.code === "Space" && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); alternar(); } });
   }
 
@@ -334,14 +334,20 @@
   }
   setInterval(() => { if (!document.hidden) checarAoVivo(); }, 120000);
 
+  let retomarAposVideo = false;   // a rádio estava tocando quando o VEJA abriu
   function modal(html, cls = "") {
     let m = $("#ra-modal");
     if (!m) { m = document.createElement("div"); m.id = "ra-modal"; document.body.appendChild(m); }
     m.className = "open " + cls;
     m.innerHTML = `<div class="rm-box"><button class="rm-x" aria-label="Fechar">×</button>${html}</div>`;
-    const fechar = () => { m.className = ""; m.innerHTML = ""; };
+    const fechar = () => {
+      const eraVideo = m.classList.contains("video");
+      m.className = ""; m.innerHTML = "";                       // remove o vídeo (para o som dele)
+      if (eraVideo && retomarAposVideo) { retomarAposVideo = false; tocar(); toast("Voltando para " + (atual ? atual.nome : "a rádio")); }
+    };
     $(".rm-x", m).onclick = fechar;
     m.onclick = (e) => { if (e.target === m) fechar(); };
+    m._fechar = fechar;
     return m;
   }
 
@@ -369,7 +375,7 @@
       modal(`<div class="rm-msg"><span class="rm-ico">📺</span><h3>Transmissão ao vivo</h3><p>Nesta prévia o claude.ai bloqueia vídeos de outros sites. No app publicado, o vídeo ao vivo e os últimos vídeos abrem aqui dentro, sem sair do app.</p><a class="btn primary" href="${esc(canal)}/live" target="_blank" rel="noopener">Abrir canal no YouTube</a></div>`);
       return;
     }
-    if (document.body.dataset.player === "playing") pausar();   // não tocar rádio e vídeo juntos
+    if (document.body.dataset.player === "playing" || document.body.dataset.player === "loading") { retomarAposVideo = true; pausar(); }   // não tocar rádio e vídeo juntos
     if (!idCanalYT()) {   // canal cadastrado como @nome: sem ID não dá para embutir
       if (!ESTATICO && (!estadoVideo || Date.now() - (estadoVideo._t || 0) > 60000)) { try { const r = await fetch(API + "aovivo.php?t=" + Date.now()); estadoVideo = await r.json(); estadoVideo._t = Date.now(); } catch (e) {} }
       if (estadoVideo && estadoVideo.videoId) return telaVideo("vivo", estadoVideo);
