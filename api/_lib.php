@@ -79,10 +79,11 @@ function login(string $usuario, string $senha): ?array {
     return $lista[$usuario];
 }
 
-function criarSessao(string $usuario): string {
+const SESSAO_LEMBRAR_DIAS = 30;
+function criarSessao(string $usuario, bool $lembrar = false): string {
     $token = bin2hex(random_bytes(32));
     $s = array_filter(lerPhp(SESSOES_FILE), fn($x) => $x['expira'] > time());
-    $s[hash('sha256', $token)] = ['usuario' => $usuario, 'expira' => time() + SESSAO_HORAS * 3600];
+    $s[hash('sha256', $token)] = ['usuario' => $usuario, 'lembrar' => $lembrar, 'expira' => time() + ($lembrar ? SESSAO_LEMBRAR_DIAS * 86400 : SESSAO_HORAS * 3600)];
     gravarPhp(SESSOES_FILE, $s);
     return $token;
 }

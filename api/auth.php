@@ -8,7 +8,8 @@ $acao = $b['acao'] ?? 'login';
 if ($acao === 'login') {
     $u = login((string)($b['usuario'] ?? ''), (string)($b['senha'] ?? ''));
     if (!$u) responder(['erro' => 'Usuário ou senha incorretos.'], 401);
-    responder(['token' => criarSessao($u['usuario']), 'usuario' => publico($u)]);
+    $lembrar = !empty($b['lembrar']);
+    responder(['token' => criarSessao($u['usuario'], $lembrar), 'lembrar' => $lembrar, 'usuario' => publico($u)]);
 }
 if ($acao === 'eu') responder(['usuario' => publico(exigir())]);
 if ($acao === 'sair') { encerrarSessao(); responder(['ok' => true]); }

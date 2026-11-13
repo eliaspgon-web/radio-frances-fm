@@ -248,7 +248,7 @@
   }
 
   // ---------- "Tocando agora" (música atual) ----------
-  const mountDe = (r) => { const m = String((r && r.stream) || "").split("?")[0].split("/").pop().replace(/\.(aac|mp3|m3u8?|ogg)$/i, ""); return /^[A-Za-z0-9_]+$/.test(m) ? m : ""; };
+  const mountDe = (r) => { if (r && r.mount) return String(r.mount).replace(/[^A-Za-z0-9_]/g, ""); const m = String((r && r.stream) || "").split("?")[0].split("/").pop().replace(/\.(aac|mp3|m3u8?|ogg)$/i, ""); return /^[A-Za-z0-9_]+$/.test(m) ? m : ""; };
   // ---------- "Tocando agora": metadados do stream (RDS) ----------
   // Fonte principal: serviço público da Triton/StreamTheWorld (o mesmo provedor do stream), lido direto pelo app.
   // Os nomes vêm em maiúsculas e às vezes com acento quebrado; o catálogo do iTunes corrige a grafia e traz a capa.
@@ -313,15 +313,20 @@
     const chave = m ? m.titulo + "|" + m.artista : "";
     const texto = m ? [m.titulo, m.artista].filter(Boolean).join(" — ") : "";
     $$("[data-np=song]").forEach((e) => (e.textContent = texto || (r ? r.slogan || config.site.slogan || "" : "")));
-    $$("[data-np=track]").forEach((e) => (e.textContent = m ? m.titulo : (config.site.slogan || "")));
+    $$("[data-np=track]").forEach((e) => (e.textContent = m ? m.titulo : ((r && r.slogan) || config.site.slogan || "")));
     $$("[data-np=artist]").forEach((e) => (e.textContent = m ? m.artista : ""));
-    $$("[data-np=cover]").forEach((e) => { e.innerHTML = m && m.capa ? `<img src="${esc(m.capa)}" alt="Capa: ${esc(m.titulo)}">` : ""; e.classList.toggle("on", !!(m && m.capa)); });
+    const bola = (config.site && config.site.icone) || "assets/site/icone.svg";   // sem capa: a bola da logo da rádio
+    $$("[data-np=cover]").forEach((e) => {
+      const temCapa = !!(m && m.capa);
+      e.innerHTML = m ? `<img src="${esc(temCapa ? m.capa : safeUrl(bola) || "assets/site/icone.svg")}" alt="${esc(temCapa ? "Capa: " + m.titulo : config.site.nome || "Logo")}" ${temCapa ? `onerror="this.src='${esc(bola)}';this.parentNode.classList.add('bola')"` : ""}>` : "";
+      e.classList.toggle("on", !!m); e.classList.toggle("bola", !!m && !temCapa);
+    });
     document.body.classList.toggle("has-song", !!texto);
     if (chave !== npChave && "mediaSession" in navigator && r) {   // tela de bloqueio / central de controle
       npChave = chave;
       try {
         navigator.mediaSession.metadata = new MediaMetadata({ title: m ? m.titulo : r.nome, artist: m ? m.artista || r.nome : (r.frequencia || ""), album: r.nome,
-          artwork: m && m.capa ? [{ src: m.capa, sizes: "300x300", type: "image/jpeg" }] : [{ src: "assets/icons/icon-512.png", sizes: "512x512", type: "image/png" }] });
+          artwork: m && m.capa ? [{ src: m.capa, sizes: "300x300", type: "image/jpeg" }] : [{ src: new URL("assets/icons/icon-512.png", location.href).href, sizes: "512x512", type: "image/png" }] });
       } catch (e) {}
     }
   }
@@ -561,7 +566,7 @@
     let ov = $("#ra-admin");
     if (!ov) { ov = document.createElement("div"); ov.id = "ra-admin"; document.body.appendChild(ov); }
     ov.className = "open";
-    if (!sessao) { try { sessao = JSON.parse(sessionStorage.getItem(LS_SES) || "null"); } catch (e) { sessao = null; } }
+    if (!sessao) { try { sessao = JSON.parse(sessionStorage.getItem(LS_SES) || localStorage.getItem(LS_SES) || "null"); } catch (e) { sessao = null; } }
     if (sessao && !PREVIEW) {   // confere se a sessão ainda vale
       try { const r = await fetch(API + "auth.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify({ acao: "eu" }) }); if (r.ok) Object.assign(sessao, (await r.json()).usuario); else sessao = null; } catch (e) {}
     }
@@ -570,7 +575,12 @@
     telaPainel(ov);
   }
   function fecharAdmin() { pararAudiencia(); limparImpressao(); const ov = $("#ra-admin"); if (ov) ov.className = ""; }
-  function guardarSessao() { try { sessao ? sessionStorage.setItem(LS_SES, JSON.stringify(sessao)) : sessionStorage.removeItem(LS_SES); } catch (e) {} }
+  function guardarSessao() {
+    try {
+      sessionStorage.removeItem(LS_SES); localStorage.removeItem(LS_SES);
+      if (sessao) (sessao.lembrar ? localStorage : sessionStorage).setItem(LS_SES, JSON.stringify(sessao));
+    } catch (e) {}
+  }
   function sessaoExpirou() { sessao = null; guardarSessao(); toast("Sua sessão expirou. Entre novamente.", "err"); telaLogin($("#ra-admin")); }
 
   function telaLogin(ov, msg = "") {
@@ -583,6 +593,7 @@
         <form id="adm-form" class="adm-login-form" autocomplete="on">
           <label class="f"><span>Usuário</span><input id="adm-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
           <label class="f"><span>Senha</span><span class="pw"><input type="password" id="adm-senha" name="password" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="Mostrar senha">👁</button></span></label>
+          <label class="lembrar"><input type="checkbox" id="adm-lembrar" checked> <span>Manter conectado neste aparelho (30 dias)</span></label>
           <button class="btn primary">Entrar</button>
         </form>
         <small id="adm-err">${esc(msg)}</small>
@@ -593,16 +604,17 @@
     $("#adm-form", ov).onsubmit = async (e) => {
       e.preventDefault();
       const btn = $("#adm-form button.primary", ov); btn.disabled = true; btn.textContent = "Entrando…";
-      const r = await entrar($("#adm-user", ov).value.trim().toLowerCase(), $("#adm-senha", ov).value);
+      const lembrar = $("#adm-lembrar", ov).checked;
+      const r = await entrar($("#adm-user", ov).value.trim().toLowerCase(), $("#adm-senha", ov).value, lembrar);
       btn.disabled = false; btn.textContent = "Entrar";
       if (r.erro) { $("#adm-err", ov).textContent = r.erro; $("#adm-senha", ov).select(); return; }
-      sessao = r; guardarSessao(); rascunho = clone(config); aba = "radios"; telaPainel(ov);
+      sessao = Object.assign(r, { lembrar }); guardarSessao(); rascunho = clone(config); aba = "radios"; telaPainel(ov);
       toast(`Olá, ${sessao.nome}!`, "ok");
     };
   }
   function olhinho(root) { $$(".pw-eye", root).forEach((b) => (b.onclick = () => { const i = b.previousElementSibling; i.type = i.type === "password" ? "text" : "password"; })); }
 
-  async function entrar(usuario, senha) {
+  async function entrar(usuario, senha, lembrar) {
     if (PREVIEW) {
       const u = (await usuariosPrevia()).find((x) => x.usuario === usuario);
       if (!u || u.hash !== (await sha(senha))) return { erro: "Usuário ou senha incorretos." };
@@ -610,7 +622,7 @@
     }
     if (ESTATICO) return { erro: "Este endereço é a versão sem servidor (GitHub Pages): o painel não salva aqui. Use o app publicado no servidor com PHP (ex.: francesfm.com.br/app)." };
     try {
-      const r = await fetch(API + "auth.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "login", usuario, senha }) });
+      const r = await fetch(API + "auth.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "login", usuario, senha, lembrar: !!lembrar }) });
       const j = await r.json();
       if (!r.ok) return { erro: j.erro || "Não foi possível entrar." };
       return Object.assign({ token: j.token }, j.usuario);
@@ -798,6 +810,9 @@
                 <small class="test-out"></small>
               </label>
               ${campoImagem("Logo / ícone", r.logo, "logo")}
+              <label class="f"><span>Slogan da rádio</span><input data-k="slogan" value="${esc(r.slogan || "")}" placeholder="Ex.: A voz do Rancho do Maia"></label>
+              <label class="f"><span>ID do “Tocando agora” (RDS)</span><input data-k="mount" value="${esc(r.mount || "")}" placeholder="${esc(mountDe(Object.assign({}, r, { mount: "" })) || "ex.: FRANCESFM_MACAAC")}"><small class="f-dica">Vazio = descobre pelo endereço do streaming.</small></label>
+              <label class="f full"><span>Texto fixo no “Tocando agora” (opcional)</span><input data-k="tocandoTexto" value="${esc(r.tocandoTexto || "")}" placeholder="Use quando a rádio não envia o nome das músicas"></label>
             </div>
           </article>`).join("") || `<p class="empty">Nenhuma rádio. Clique em “Adicionar rádio”.</p>`}
       </div>`;
@@ -961,6 +976,7 @@
   function pararAudiencia() { clearInterval(audTimer); audTimer = null; graficos.forEach((g) => g.destroy()); graficos = []; }
   function limparImpressao() { const p = $("#relatorio-print"); if (p) p.remove(); }
   const nomeRadio = (id) => { const r = (config.radios || []).find((x) => x.id === id); return r ? r.nome + (r.frequencia ? " · " + r.frequencia : "") : id; };
+  const nomeCurto = (id) => { const r = (config.radios || []).find((x) => x.id === id); if (!r) return id; const f = String(r.frequencia || "").replace(/\s*FM$/i, ""); const c = String(r.cidade || r.nome || "").split(/\s+-\s+|,/)[0].replace(/^Francês FM\s*/i, ""); return [f, c].filter(Boolean).join(" ") || r.nome; };
   const corRadio = (id) => { const i = (config.radios || []).findIndex((x) => x.id === id); return COR_SERIE[(i < 0 ? 7 : i) % 8]; };
   const n0 = (v) => Number(v || 0).toLocaleString("pt-BR");
   const hojeISO = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -1026,7 +1042,7 @@
   function grafico(canvas, cfg) { const g = new window.Chart(canvas, cfg); graficos.push(g); return g; }
   const linha = (rotulos, dados, nome, cor = COR_SERIE[0]) => ({ type: "line", data: { labels: rotulos, datasets: [{ label: nome, data: dados, borderColor: cor, backgroundColor: cor + "22", fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0, pointHoverRadius: 5, pointHoverBorderWidth: 2, pointHoverBorderColor: "#fff" }] }, options: opcoesGrafico() });
   const barras = (rotulos, dados, nome, cores, horizontal) => ({ type: "bar", data: { labels: rotulos, datasets: [{ label: nome, data: dados, backgroundColor: cores, borderRadius: 4, borderSkipped: false, maxBarThickness: horizontal ? 26 : 34, categoryPercentage: 0.8, barPercentage: 0.9 }] },
-    options: opcoesGrafico(horizontal ? { indexAxis: "y", interaction: { mode: "nearest", intersect: true }, scales: { x: { beginAtZero: true, grid: { color: "#eef0f4" }, ticks: { color: "#6b7180", precision: 0 }, border: { display: false } }, y: { grid: { display: false }, ticks: { color: "#2b3040", font: { weight: "600" } }, border: { color: "#d9dce4" } } } } : {}) });
+    options: opcoesGrafico(horizontal ? { indexAxis: "y", interaction: { mode: "nearest", intersect: true }, scales: { x: { beginAtZero: true, grid: { color: "#eef0f4" }, ticks: { color: "#6b7180", precision: 0 }, border: { display: false } }, y: { grid: { display: false }, afterFit: (sc) => { sc.width = Math.max(sc.width, 96); }, ticks: { color: "#2b3040", font: { weight: "600" }, callback: function (v) { const t = this.getLabelForValue(v); return t.length > 18 ? t.slice(0, 17) + "…" : t; } }, border: { color: "#d9dce4" } } } } : {}) });
 
   async function abaAudiencia(body) {
     pararAudiencia();
@@ -1064,7 +1080,7 @@
       $("[data-upd]", alvo).innerHTML = `<span class="pulse"></span> atualizado às ${new Date(j.atualizado).toLocaleTimeString("pt-BR")} · a cada 10 s`;
       const rot = j.ultimos60.map((x) => x.hora), dad = j.ultimos60.map((x) => x.ouvintes);
       if (!g1) g1 = grafico($("[data-c1]", alvo), linha(rot, dad, "Ouvintes")); else { g1.data.labels = rot; g1.data.datasets[0].data = dad; g1.update("none"); }
-      const r2 = radios.map(nomeRadio), d2 = radios.map((id) => j.porRadio[id]), c2 = radios.map(corRadio);
+      const r2 = radios.map(nomeCurto), d2 = radios.map((id) => j.porRadio[id]), c2 = radios.map(corRadio);
       if (!g2) g2 = grafico($("[data-c2]", alvo), barras(r2, d2, "Ouvintes", c2, true)); else { g2.data.labels = r2; g2.data.datasets[0].data = d2; g2.data.datasets[0].backgroundColor = c2; g2.update("none"); }
       const r3 = plats.map(([p]) => NOME_PLAT[p] || p), d3 = plats.map(([, v]) => v);
       if (!g3) g3 = grafico($("[data-c3]", alvo), barras(r3, d3, "Conectados", COR_SERIE[0], true)); else { g3.data.labels = r3; g3.data.datasets[0].data = d3; g3.update("none"); }
@@ -1137,7 +1153,7 @@
       grafico(G("unicos"), barras(rot, j.porDia.map((d) => d.ouvintesUnicos), "Ouvintes únicos", corPrincipal));
       grafico(G("picos"), barras(rot, j.porDia.map((d) => d.pico), "Pico simultâneo", corPrincipal));
     }
-    grafico(G("radio"), barras(j.porRadio.map((r) => nomeRadio(r.radio)), j.porRadio.map((r) => r.horas), "Horas ouvidas", j.porRadio.map((r) => (!radioSel || r.radio === radioSel ? corRadio(r.radio) : "#c9cdd6")), true));
+    grafico(G("radio"), barras(j.porRadio.map((r) => nomeCurto(r.radio)), j.porRadio.map((r) => r.horas), "Horas ouvidas", j.porRadio.map((r) => (!radioSel || r.radio === radioSel ? corRadio(r.radio) : "#c9cdd6")), true));
     grafico(G("plat"), barras(j.porPlataforma.map((p) => NOME_PLAT[p.plataforma] || p.plataforma), j.porPlataforma.map((p) => p.aparelhos), "Aparelhos", corPrincipal, true));
 
     $("[data-print]", alvo).onclick = () => imprimirRelatorio(j, periodoTxt, kpis, cab, linhasTabela);
