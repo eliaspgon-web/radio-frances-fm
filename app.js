@@ -242,7 +242,7 @@
   // Os nomes vêm em maiúsculas e às vezes com acento quebrado; o catálogo do iTunes corrige a grafia e traz a capa.
   const npCache = {};
   let npChave = "";
-  const limparNp = (t) => String(t || "").replace(/^["'\s]+|["'\s]+$/g, "").replace(/�O/g, "ÃO").replace(/�/g, "").replace(/\s+/g, " ").trim();
+  const limparNp = (t) => String(t || "").replace(/^["'\s]+|["'\s]+$/g, "").replace(/\uFFFDO/g, "ÃO").replace(/\uFFFD/g, "").replace(/\s+/g, " ").trim();
   const norm = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\(.*?\)|\[.*?\]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
   const titleCase = (t) => t.toLowerCase().replace(/(^|\s|\()([a-zà-ú])/g, (m, a, b) => a + b.toUpperCase());
 
