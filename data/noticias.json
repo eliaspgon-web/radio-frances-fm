@@ -1,6 +1,38 @@
 {
- "atualizado": "2026-11-14T00:55:34+0000",
+ "atualizado": "2026-11-14T01:58:17+0000",
  "itens": [
+  {
+   "titulo": "EUA retiram suspensão de decolagens após mais de quatro horas de paralisação",
+   "resumo": "FAA libera retomada das partidas, mas normalização depende da reorganização dos voos; governo diz não haver indícios de ataque hacker",
+   "link": "https://francesnews.com.br/post/2026/11/13/46036-eua-retiram-suspensao-de-decolagens-apos-mais-de-quatro-horas-de-paralisacao",
+   "data": "2026-11-13T22:43:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/7636ae381ddbc70dcff6.jpg"
+  },
+  {
+   "titulo": "Senado pede ao STF que preserve regras de folga no fim da escala 6x1",
+   "resumo": "Casa contesta a flexibilização dos descansos e a redução do prazo para adaptar contratos públicos; quatro ministros votaram para manter a liminar de Flávio Dino",
+   "link": "https://francesnews.com.br/post/2026/11/13/46033-senado-pede-ao-stf-que-preserve-regras-de-folga-no-fim-da-escala-6x1",
+   "data": "2026-11-13T22:40:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/0638917e2277465b9209.jpg"
+  },
+  {
+   "titulo": "Brasil x Japão: horário e onde assistir ao penúltimo amistoso da Seleção em 2026",
+   "resumo": "Equipes se reencontram neste sábado (14), em Singapura, após vitória brasileira de virada na Copa do Mundo",
+   "link": "https://francesnews.com.br/post/2026/11/13/46032-brasil-x-japao-horario-e-onde-assistir-ao-penultimo-amistoso-da-selecao-em-2026",
+   "data": "2026-11-13T22:20:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/bc6089e65951b0dba16c.jpg"
+  },
+  {
+   "titulo": "O que o teste de Rorschach revelou sobre Suzane von Richthofen?",
+   "resumo": "Livro de Ullisses Campbell descreve quatro avaliações feitas na prisão e afirma que os laudos não apontaram traços de psicopatia",
+   "link": "https://francesnews.com.br/post/2026/11/13/46029-o-que-o-teste-de-rorschach-revelou-sobre-suzane-von-richthofen",
+   "data": "2026-11-13T22:00:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/9e0ab0c41cddab4c6f09.jpg"
+  },
   {
    "titulo": "Brasil passa de mil casos de mpox, e linhagem ligada a surto no Congo circula em SP e no Rio",
    "resumo": "São Paulo identificou 103 casos do clado Ib; o total nacional inclui infecções por diferentes linhagens do vírus",
@@ -8,38 +40,6 @@
    "data": "2026-11-13T21:40:00-03:00",
    "fonte": "Francês News",
    "imagem": "assets/noticias/3b4c189888e8b05c045c.jpg"
-  },
-  {
-   "titulo": "EUA dizem não ter indícios de ataque terrorista após suspensão de decolagens",
-   "resumo": "Autoridades investigam falha no controle aéreo e ainda não têm prazo para retomar as operações; hipótese de ataque cibernético não foi descartada",
-   "link": "https://francesnews.com.br/post/2026/11/13/46035-eua-dizem-nao-ter-indicios-de-ataque-terrorista-apos-suspensao-de-decolagens",
-   "data": "2026-11-13T21:31:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/c73c68fb9ba53ee55a02.jpg"
-  },
-  {
-   "titulo": "Governo encerra subsídio de R$ 1,40 ao diesel importado e mantém benefício ao rodoviário",
-   "resumo": "Ministério da Fazenda informou que não vai renovar a medida após 30 dias; subvenção de R$ 2,12 por litro continua em vigor",
-   "link": "https://francesnews.com.br/post/2026/11/13/46027-governo-encerra-subsidio-de-r-140-ao-diesel-importado-e-mantem-beneficio-ao-rodoviario",
-   "data": "2026-11-13T21:20:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/00f098cd09eff5846757.jpg"
-  },
-  {
-   "titulo": "‘Serial killer de Maceió’ vai ao 13º júri na segunda (16) por morte de homem que passeava com cachorro",
-   "resumo": "Albino Santos de Lima é acusado de seguir Alisson Santos Silva antes de atirar contra ele no Jardim Petrópolis II; penas de julgamentos anteriores somam 351 anos",
-   "link": "https://francesnews.com.br/post/2026/11/13/46026-serial-killer-de-maceio-vai-ao-13o-juri-na-segunda-16-por-morte-de-homem-que-passeava-com-cachorro",
-   "data": "2026-11-13T21:00:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/7f19018b61e856143852.jpg"
-  },
-  {
-   "titulo": "EUA suspendem decolagens em todo o país com mais de 30 mil voos previstos",
-   "resumo": "Falha atingiu centros de controle aéreo; mais de mil aeronaves já estavam a caminho de aeroportos americanos quando a ordem foi emitida",
-   "link": "https://francesnews.com.br/post/2026/11/13/46031-eua-suspendem-decolagens-em-todo-o-pais-com-mais-de-30-mil-voos-previstos",
-   "data": "2026-11-13T20:57:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/73acdd3189b65c685c63.jpg"
   }
  ]
 }
