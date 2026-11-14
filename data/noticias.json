@@ -1,6 +1,30 @@
 {
- "atualizado": "2026-11-14T20:09:37+0000",
+ "atualizado": "2026-11-14T21:11:51+0000",
  "itens": [
+  {
+   "titulo": "Governo abre consulta pública sobre enfrentamento ao calor extremo",
+   "resumo": "Plataforma Brasil Participativo receberá contribuições até o dia 23",
+   "link": "https://francesnews.com.br/post/2026/11/14/46076-governo-abre-consulta-publica-sobre-enfrentamento-ao-calor-extremo",
+   "data": "2026-11-14T17:50:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/b3de6aa5c0ab14b92cc3.jpg"
+  },
+  {
+   "titulo": "Avião de pequeno porte cai após colidir com torre de energia em Santa Catarina",
+   "resumo": "Segundo o boletim divulgado pelos socorristas, o piloto foi encontrado consciente, orientado e com sinais vitais estáveis",
+   "link": "https://francesnews.com.br/post/2026/11/14/46075-aviao-de-pequeno-porte-cai-apos-colidir-com-torre-de-energia-em-santa-catarina",
+   "data": "2026-11-14T17:30:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/ed40a26e5622a3bd31ae.jpg"
+  },
+  {
+   "titulo": "Pesquisa revela que 74% das pessoas sentem ansiedade antes de relações sexuais; entenda",
+   "resumo": "Levantamento foi realizado em com 18 mil usuários de aplicativo de relacionamento em 12 países",
+   "link": "https://francesnews.com.br/post/2026/11/14/46074-pesquisa-revela-que-74-das-pessoas-sentem-ansiedade-antes-de-relacoes-sexuais-entenda",
+   "data": "2026-11-14T17:10:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/923e4651c6d2bc00146d.jpg"
+  },
   {
    "titulo": "Motociclista de 71 anos morre após colisão frontal com caminhão na BR-424, em Caetés (PE)",
    "resumo": "Acidente aconteceu na noite da sexta-feira (13), no Agreste de Pernambuco. PRF suspeita que a motocicleta tenha invadido a contramão da rodovia",
@@ -16,30 +40,6 @@
    "data": "2026-11-14T16:30:00-03:00",
    "fonte": "Francês News",
    "imagem": "assets/noticias/610a242bc37e15436dd3.jpg"
-  },
-  {
-   "titulo": "Sabrina Sato e Nicolas Prattes anunciam que o primeiro filho do casal",
-   "resumo": "O anúncio foi feito em um vídeo publicado nas redes sociais",
-   "link": "https://francesnews.com.br/post/2026/11/14/46071-sabrina-sato-e-nicolas-prattes-anunciam-que-o-primeiro-filho-do-casal",
-   "data": "2026-11-14T16:10:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/c2d4228ea98afa57d512.jpg"
-  },
-  {
-   "titulo": "Brasil chega a 1.055 casos confirmados de mpox em 2026 com disparada de registros em outubro e novembro",
-   "resumo": "Painel epidemiológico do Ministério da Saúde atualizado neste sábado (14) contabiliza 1.055 infecções confirmadas e uma morte no Rio de Janeiro",
-   "link": "https://francesnews.com.br/post/2026/11/14/46069-brasil-chega-a-1055-casos-confirmados-de-mpox-em-2026-com-disparada-de-registros-em-outubro-e-novembro",
-   "data": "2026-11-14T15:50:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/9134f7284a15882f23fb.jpg"
-  },
-  {
-   "titulo": "Fotos de vistoria no HGE mostram paredes deterioradas, poltronas rasgadas e ferrugem",
-   "resumo": "Registros feitos durante inspeção do MPAL, MPF e DPU expõem condições de instalações e mobiliário do hospital, onde equipes também identificaram falta de insumos para ci…",
-   "link": "https://francesnews.com.br/post/2026/11/14/46070-fotos-de-vistoria-no-hge-mostram-paredes-deterioradas-poltronas-rasgadas-e-ferrugem",
-   "data": "2026-11-14T15:49:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/6b1f7f955c39e565db1d.jpg"
   }
  ]
 }
