@@ -1,6 +1,30 @@
 {
- "atualizado": "2026-11-14T13:28:13+0000",
+ "atualizado": "2026-11-14T14:18:10+0000",
  "itens": [
+  {
+   "titulo": "Netflix rebate rumores de que escondeu documentário sobre Suzane von Richthofen",
+   "resumo": "Plataforma diz que a produção está disponível para todos os assinantes; trailer saiu dois dias antes da estreia",
+   "link": "https://francesnews.com.br/post/2026/11/14/46058-netflix-rebate-rumores-de-que-escondeu-documentario-sobre-suzane-von-richthofen",
+   "data": "2026-11-14T11:10:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/c4e8363eeb92a622f9ef.jpg"
+  },
+  {
+   "titulo": "Mãe é levada à delegacia após filho ser flagrado pilotando moto em Palmeira dos Índios",
+   "resumo": "Policiais abordaram o adolescente no Loteamento Natércio Viana após ver a moto com a luz traseira apagada",
+   "link": "https://francesnews.com.br/post/2026/11/14/46053-mae-e-levada-a-delegacia-apos-filho-ser-flagrado-pilotando-moto-em-palmeira-dos-indios",
+   "data": "2026-11-14T10:50:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/e0ca045067e8088d227d.jpg"
+  },
+  {
+   "titulo": "Denúncia de barulho termina com motociclista preso por embriaguez em Palmeira dos Índios",
+   "resumo": "Homem de 31 anos pilotava sem habilitação e sem capacete; moto estava sem escapamento e sem numeração no chassi",
+   "link": "https://francesnews.com.br/post/2026/11/14/46052-denuncia-de-barulho-termina-com-motociclista-preso-por-embriaguez-em-palmeira-dos-indios",
+   "data": "2026-11-14T10:30:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/f8ee675b7b06a6630379.jpg"
+  },
   {
    "titulo": "Família Suruagy Amaral tem dívida de R$ 9,1 milhões cobrada pelo Estado há 35 anos",
    "resumo": "Execução contra a Agropecuária Amaral já foi extinta uma vez por prescrição e volta a correr o mesmo risco",
@@ -10,36 +34,12 @@
    "imagem": "assets/noticias/ec01e167981cb4adf9ba.jpg"
   },
   {
-   "titulo": "Dia Mundial da Alfabetização: Estudantes da Educação de Jovens e Adultos transformam antigos sonhos em novas conquistas",
+   "titulo": "Dia Nacional da Alfabetização: Estudantes da Educação de Jovens e Adultos transformam antigos sonhos em novas conquistas",
    "resumo": "Alunos mostram como o acesso à escola pode mudar a relação com o mundo em qualquer fase da vida",
-   "link": "https://francesnews.com.br/post/2026/11/14/46051-dia-mundial-da-alfabetizacao-estudantes-da-educacao-de-jovens-e-adultos-transformam-antigos-sonhos-em-novas-conquistas",
+   "link": "https://francesnews.com.br/post/2026/11/14/46051-dia-nacional-da-alfabetizacao-estudantes-da-educacao-de-jovens-e-adultos-transformam-antigos-sonhos-em-novas-conquistas",
    "data": "2026-11-14T10:10:00-03:00",
    "fonte": "Francês News",
    "imagem": "assets/noticias/a76f8fe6e4755ceead4c.jpg"
-  },
-  {
-   "titulo": "Pontos de vacinação dos shoppings não funcionam no feriado de 15 de novembro",
-   "resumo": "Atendimentos retomam na segunda-feira (16)",
-   "link": "https://francesnews.com.br/post/2026/11/14/46048-pontos-de-vacinacao-dos-shoppings-nao-funcionam-no-feriado-de-15-de-novembro",
-   "data": "2026-11-14T09:50:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/1151eaa45e23a875752c.jpg"
-  },
-  {
-   "titulo": "Homem é autuado por suspeita de agredir a companheira no Poço, em Maceió",
-   "resumo": "Mulher relatou à Polícia Militar que foi agredida após uma discussão; ela apresentava ferimentos na testa e no cotovelo direito",
-   "link": "https://francesnews.com.br/post/2026/11/14/46045-homem-e-autuado-por-suspeita-de-agredir-a-companheira-no-poco-em-maceio",
-   "data": "2026-11-14T09:30:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/353dbc051d54025b5551.jpg"
-  },
-  {
-   "titulo": "Brasil reage com dois de Vini Jr., mas perde para o Japão por 3 a 2 nos acréscimos",
-   "resumo": "Vini Jr. marcou duas vezes e chegou a empatar o jogo em Singapura; foi a segunda vitória japonesa na história do confronto",
-   "link": "https://francesnews.com.br/post/2026/11/14/46050-brasil-reage-com-dois-de-vini-jr-mas-perde-para-o-japao-por-3-a-2-nos-acrescimos",
-   "data": "2026-11-14T09:23:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/8e9429f69a94f605736a.jpg"
   }
  ]
 }
