@@ -1581,11 +1581,13 @@
     return caminho;
   }
 
+  const urlAppAdmin = () => { const [dono, nome] = (ghCfg().repo || "eliaspgon-web/radio-frances-fm").split("/"); return `https://${dono}.github.io/${nome}/#admin`; };
   // ----- aba Publicar no GitHub (painel) -----
   function abaGitHub(body) {
     const g = ghCfg();
     body.innerHTML = `
       <div class="adm-head"><h3>Publicar no GitHub</h3><span class="gh-status ${ghPronto() ? "ok" : ""}">${ghPronto() ? "✅ Conectado: Salvar alterações publica no app" : "⚪ Não conectado"}</span></div>
+      ${PREVIEW ? `<article class="adm-card gh-aviso"><strong>⚠ Esta prévia do Claude não consegue se conectar ao GitHub</strong><p>O visualizador de artefatos bloqueia conexões com outros sites. Conecte e publique pelo painel do app publicado — lá funciona.</p><a class="btn primary" href="${esc(urlAppAdmin())}" target="_blank" rel="noopener">Abrir o painel no app publicado ↗</a></article>` : ""}
       <article class="adm-card">
         <p class="hint" style="margin-top:0">Com o GitHub conectado, cada <b>Salvar alterações</b> grava a configuração no repositório e o app no ar se atualiza para todos os ouvintes em cerca de 1 minuto. As imagens enviadas pelo painel também vão para o repositório. O token fica guardado <b>só neste navegador</b>.</p>
         <div class="grid">
@@ -1619,7 +1621,12 @@
         if (!repo.permissions || !repo.permissions.push) throw new Error("o token não tem permissão de escrita (Contents: Read and write)");
         out.className = "test-out ok"; out.textContent = `✓ Conectado a ${repo.full_name}. Agora "Salvar alterações" publica no app.`;
         $(".gh-status", body).className = "gh-status ok"; $(".gh-status", body).textContent = "✅ Conectado: Salvar alterações publica no app";
-      } catch (e) { out.className = "test-out err"; out.textContent = "✗ " + e.message; }
+      } catch (e) {
+        out.className = "test-out err";
+        out.innerHTML = e.status ? "✗ " + esc(e.message) : PREVIEW
+          ? `✗ A prévia do Claude bloqueou a conexão. Use o painel do app: <a href="${esc(urlAppAdmin())}" target="_blank" rel="noopener">abrir ↗</a>`
+          : "✗ Sem conexão com o GitHub. Confira a internet e tente de novo.";
+      }
     };
     const sair = $("[data-gh-sair]", body);
     if (sair) sair.onclick = () => { const g2 = ghCfg(); g2.token = ""; lsSet(LS_GH, JSON.stringify(g2)); abaGitHub(body); toast("Token removido deste navegador"); };

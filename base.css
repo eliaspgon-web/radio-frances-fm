@@ -401,3 +401,6 @@ body.np-programa .np-cover:not(.bola){border-radius:12px}
 .pg-quando{color:#6b7180;font-size:.78rem;margin-left:auto;white-space:nowrap}
 .pg-radios{margin:4px 0 10px}
 .pg-radios .chip input{position:absolute;opacity:0}
+.gh-aviso{border:1px solid #f5c26b;background:#fff8e8}
+.gh-aviso strong{display:block;color:#8a5a00;margin-bottom:4px}
+.gh-aviso p{margin:0 0 10px;color:#5d4a20;font-size:.9rem}
