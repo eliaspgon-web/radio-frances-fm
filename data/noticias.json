@@ -1,6 +1,14 @@
 {
- "atualizado": "2026-11-14T01:58:17+0000",
+ "atualizado": "2026-11-14T02:47:33+0000",
  "itens": [
+  {
+   "titulo": "Gilmar diz que Moro agiu para impedir candidatura de Lula em 2018",
+   "resumo": "Declaração rebate fala de ex-juiz sobre a anulação do caso do triplex",
+   "link": "https://francesnews.com.br/post/2026/11/13/46034-gilmar-diz-que-moro-agiu-para-impedir-candidatura-de-lula-em-2018",
+   "data": "2026-11-13T23:00:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/031543f5e90082db03f4.jpg"
+  },
   {
    "titulo": "EUA retiram suspensão de decolagens após mais de quatro horas de paralisação",
    "resumo": "FAA libera retomada das partidas, mas normalização depende da reorganização dos voos; governo diz não haver indícios de ataque hacker",
@@ -32,14 +40,6 @@
    "data": "2026-11-13T22:00:00-03:00",
    "fonte": "Francês News",
    "imagem": "assets/noticias/9e0ab0c41cddab4c6f09.jpg"
-  },
-  {
-   "titulo": "Brasil passa de mil casos de mpox, e linhagem ligada a surto no Congo circula em SP e no Rio",
-   "resumo": "São Paulo identificou 103 casos do clado Ib; o total nacional inclui infecções por diferentes linhagens do vírus",
-   "link": "https://francesnews.com.br/post/2026/11/13/46028-brasil-passa-de-mil-casos-de-mpox-e-linhagem-ligada-a-surto-no-congo-circula-em-sp-e-no-rio",
-   "data": "2026-11-13T21:40:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/3b4c189888e8b05c045c.jpg"
   }
  ]
 }
