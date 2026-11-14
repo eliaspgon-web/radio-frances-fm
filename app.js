@@ -2009,7 +2009,7 @@
     if (!PREVIEW && idCanalYT()) setTimeout(() => carregarYT().catch(() => {}), 1500);   // deixa o player do YouTube pronto para o VEJA abrir na hora
     iniciarMedicao();
     if (!PREVIEW && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
-    if (location.hash === "#admin") { document.body.classList.add("modo-adm"); abrirAdmin(); }
+    if (location.hash === "#admin" || window.RADIO_ABRIR_ADMIN) { document.body.classList.add("modo-adm"); abrirAdmin(); }
   }
   document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", iniciar) : iniciar();
 })();
