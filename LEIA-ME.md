@@ -97,3 +97,17 @@ Também dá para duplicar um programa ou copiá-lo para outra rádio.
 No horário do programa, o "Tocando agora" (e a tela de bloqueio do celular) mostra a imagem, o nome e a descrição do programa sempre que a rádio não estiver mandando o nome de uma música. Para o programa aparecer mesmo durante as músicas, marque **Mostrar o programa mesmo se a rádio mandar nome de música**. Quando dois programas coincidem, vale o mais curto (ex.: um boletim dentro de um programa longo).
 
 O RDS também ignora textos que não são música, como o nome da rádio, vinhetas, comerciais e hora certa.
+
+## Painel → GitHub (publicar sem servidor)
+Na versão do GitHub Pages, o painel publica direto no repositório:
+1. Abra o app com **#admin** no final do endereço, ou toque 5 vezes na logo.
+2. Entre com o usuário e a senha. No primeiro acesso use admin / frances2026 e depois troque a senha em 🔒 Minha senha.
+3. Na aba **🔗 Publicar no GitHub**, cole um token do GitHub que tenha só a permissão **Contents: Read and write** neste repositório (o passo a passo está na própria aba) e clique em **Salvar e testar conexão**.
+4. A partir daí, **Salvar alterações** grava o `data/config.json` e as imagens enviadas (`assets/uploads/`) no repositório. O app no ar atualiza para todos em cerca de 1 minuto.
+
+O token fica salvo só no navegador onde foi colado. Ele nunca vai para o `config.json` nem aparece no site.
+
+### Sem o painel, direto no GitHub
+1. Abra `data/config.json` no repositório e clique no lápis (Edit).
+2. Edite o texto e clique em **Commit changes**.
+3. Ou, no painel, use **Exportar**, copie o conteúdo e cole no lugar do arquivo.

@@ -842,7 +842,7 @@
     if (!ov) { ov = document.createElement("div"); ov.id = "ra-admin"; document.body.appendChild(ov); }
     ov.className = "open";
     if (!sessao) { try { sessao = JSON.parse(sessionStorage.getItem(LS_SES) || localStorage.getItem(LS_SES) || "null"); } catch (e) { sessao = null; } }
-    if (sessao && !PREVIEW) {   // confere se a sessão ainda vale
+    if (sessao && !PREVIEW && !ESTATICO) {   // confere se a sessão ainda vale
       try { const r = await fetch(API + "auth.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify({ acao: "eu" }) }); if (r.ok) Object.assign(sessao, (await r.json()).usuario); else sessao = null; } catch (e) {}
     }
     if (!sessao) return telaLogin(ov);
@@ -864,7 +864,7 @@
         <button class="adm-x" data-close aria-label="Fechar">×</button>
         <div class="adm-lock">⚙</div>
         <h2>Painel gerencial</h2>
-        <p>${PREVIEW ? "Prévia: usuário <b>admin</b> e senha <b>frances2026</b>. As alterações ficam salvas só neste navegador." : "Entre com seu usuário e senha."}</p>
+        <p>${PREVIEW ? "Prévia: usuário <b>admin</b> e senha <b>frances2026</b>. As alterações ficam salvas só neste navegador." : ESTATICO ? "Entre com seu usuário e senha. No primeiro acesso: <b>admin</b> / <b>frances2026</b> — troque a senha em 🔒 Minha senha." : "Entre com seu usuário e senha."}</p>
         <form id="adm-form" class="adm-login-form" autocomplete="on">
           <label class="f"><span>Usuário</span><input id="adm-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
           <label class="f"><span>Senha</span><span class="pw"><input type="password" id="adm-senha" name="password" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="Mostrar senha">👁</button></span></label>
@@ -890,12 +890,11 @@
   function olhinho(root) { $$(".pw-eye", root).forEach((b) => (b.onclick = () => { const i = b.previousElementSibling; i.type = i.type === "password" ? "text" : "password"; })); }
 
   async function entrar(usuario, senha, lembrar) {
-    if (PREVIEW) {
+    if (PREVIEW || ESTATICO) {   // sem servidor: usuários guardados neste navegador (publicar exige o token do GitHub)
       const u = (await usuariosPrevia()).find((x) => x.usuario === usuario);
       if (!u || u.hash !== (await sha(senha))) return { erro: "Usuário ou senha incorretos." };
       return { token: "previa", usuario: u.usuario, nome: u.nome, papel: u.papel, papelNome: PAPEIS[u.papel] };
     }
-    if (ESTATICO) return { erro: "Este endereço é a versão sem servidor (GitHub Pages): o painel não salva aqui. Use o app publicado no servidor com PHP (ex.: francesfm.com.br/app)." };
     try {
       const r = await fetch(API + "auth.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "login", usuario, senha, lembrar: !!lembrar }) });
       const j = await r.json();
@@ -904,7 +903,7 @@
     } catch (e) { return { erro: "Servidor indisponível." }; }
   }
   async function sair() {
-    if (!PREVIEW && sessao) { try { await fetch(API + "auth.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify({ acao: "sair" }) }); } catch (e) {} }
+    if (!PREVIEW && !ESTATICO && sessao) { try { await fetch(API + "auth.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify({ acao: "sair" }) }); } catch (e) {} }
     sessao = null; guardarSessao(); telaLogin($("#ra-admin")); toast("Você saiu do painel.");
   }
 
@@ -933,7 +932,7 @@
           </div>
         </header>
         <nav class="adm-tabs">
-          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["programacao", "📅 Programação"], ["banners", "🖼 Banners"], ["aparencia", "🎨 Aparência"], ["audiencia", "📊 Audiência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
+          ${[["radios", "📻 Rádios / Streaming"], ["noticias", "📰 Notícias"], ["contato", "💬 WhatsApp"], ["programacao", "📅 Programação"], ["banners", "🖼 Banners"], ["aparencia", "🎨 Aparência"], ...(ESTATICO || PREVIEW ? [["github", "🔗 Publicar no GitHub"]] : []), ["audiencia", "📊 Audiência"], ...(ehAdmin() ? [["usuarios", "👥 Usuários"]] : []), ["conta", "🔒 Minha senha"]].map(([k, t]) => `<button data-tab="${k}" class="${aba === k ? "on" : ""}">${t}</button>`).join("")}
         </nav>
         <section class="adm-body"></section>
       </div>`;
@@ -944,7 +943,7 @@
     $("[data-act=import]", ov).onclick = importar;
     $("[data-act=sair]", ov).onclick = sair;
     if (aba === "usuarios" && !ehAdmin()) aba = "radios";
-    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, programacao: abaProgramacao, banners: abaBanners, aparencia: abaAparencia, audiencia: abaAudiencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
+    ({ radios: abaRadios, noticias: abaNoticias, contato: abaContato, programacao: abaProgramacao, banners: abaBanners, github: abaGitHub, aparencia: abaAparencia, audiencia: abaAudiencia, usuarios: abaUsuarios, conta: abaConta }[aba] || abaRadios)($(".adm-body", ov));
   }
 
   // ----- aba Contato / WhatsApp -----
@@ -1013,6 +1012,7 @@
           const url = await enviarImagem(f);
           const field = $(`input[data-k="${b.dataset.upload}"]`, root);
           field.value = url; field.dispatchEvent(new Event("input", { bubbles: true }));
+          if (ghPrevias[url]) { const pv = $(".img-prev", field.closest(".img-field")); if (pv) pv.innerHTML = `<img src="${ghPrevias[url]}" alt="">`; }
         } catch (e) { toast(e.message || "Falha no envio", "err"); }
         b.textContent = "Enviar";
       };
@@ -1026,7 +1026,8 @@
 
   async function enviarImagem(file) {
     if (file.size > 3 * 1024 * 1024) throw new Error("Imagem muito grande (máx. 3 MB)");
-    if (!PREVIEW) {
+    if ((ESTATICO || PREVIEW) && ghPronto()) { try { return await ghEnviarImagem(file); } catch (e) { if (!PREVIEW || e.status) throw e; } }
+    if (!PREVIEW && !ESTATICO) {
       const fd = new FormData(); fd.append("arquivo", file); fd.append("token", sessao ? sessao.token : "");
       try {
         const r = await fetch(API + "upload.php", { method: "POST", body: fd });
@@ -1273,6 +1274,7 @@
     el.style.setProperty("--bnr-vel", (+b.velocidade || 600) + "ms");
     el.setAttribute("aria-roledescription", "carrossel"); el.setAttribute("aria-label", "Destaques");
     const href = (x) => {
+      if (x.acao === "link" && x.link && !/^[a-z]+:/i.test(x.link)) x = Object.assign({}, x, { link: "https://" + x.link });
       if (x.acao === "link" && safeUrl(x.link)) return `href="${esc(safeUrl(x.link))}" ${x.novaAba !== false ? 'target="_blank" rel="noopener"' : ""}`;
       if (x.acao === "whatsapp" && x.whatsapp) return `href="https://wa.me/${esc(String(x.whatsapp).replace(/\D/g, ""))}?text=${encodeURIComponent((x.mensagem || "").replace(/\{radio\}/g, atual ? atual.nome : ""))}" target="_blank" rel="noopener"`;
       if (x.acao === "radio" && x.radio) return `href="#" data-bnr-radio="${esc(x.radio)}"`;
@@ -1372,11 +1374,11 @@
             ${campoImagem("Imagem (computador e TV)", x.imagem, "imagem")}
             ${campoImagem("Imagem para celular (opcional)", x.imagemCelular, "imagemCelular")}
             <label class="f full"><span>Legenda sobre a imagem (opcional)</span><input data-k="legenda" value="${esc(x.legenda)}" placeholder="Ex.: Sorteio sábado às 10h"></label>
-            <label class="f"><span>Ao tocar no banner</span><select data-k="acao">${opt([["link", "Abrir um link"], ["whatsapp", "Abrir WhatsApp"], ["radio", "Tocar uma rádio"], ["nenhuma", "Nada (só imagem)"]], x.acao)}</select></label>
-            ${x.acao === "link" ? `<label class="f"><span>Link</span><input data-k="link" value="${esc(x.link)}" placeholder="https://…"></label>` : ""}
+            <label class="f"><span>Ao tocar no banner</span><select data-k="acao">${opt([["link", "🔗 Abrir um link"], ["whatsapp", "💬 Abrir WhatsApp"], ["radio", "📻 Tocar uma rádio"], ["nenhuma", "Nada (só imagem)"]], x.acao)}</select></label>
+            ${x.acao === "link" || x.acao === "nenhuma" ? `<label class="f"><span>🔗 Link do banner ${x.acao === "nenhuma" ? "(opcional)" : ""}</span><input data-k="link" value="${esc(x.link)}" inputmode="url" placeholder="Ex.: www.loja.com.br ou https://instagram.com/…"><small class="f-dica">Ao tocar no banner, abre este endereço.</small></label>` : ""}
             ${x.acao === "whatsapp" ? `<label class="f"><span>Número do WhatsApp</span><input data-k="whatsapp" value="${esc(x.whatsapp)}" inputmode="tel" placeholder="5582999999999"></label><label class="f full"><span>Mensagem pronta</span><input data-k="mensagem" value="${esc(x.mensagem)}" placeholder="Olá! Vi o banner no app da {radio}…"></label>` : ""}
             ${x.acao === "radio" ? `<label class="f"><span>Rádio</span><select data-k="radio"><option value="">Escolha…</option>${radiosAdm.map((r) => `<option value="${esc(r.id)}" ${x.radio === r.id ? "selected" : ""}>${esc(r.nome + " " + (r.frequencia || ""))}</option>`).join("")}</select></label>` : ""}
-            ${x.acao === "link" ? `<label class="f check"><input type="checkbox" data-k="novaAba" ${x.novaAba ? "checked" : ""}> Abrir em nova aba</label>` : ""}
+            ${x.acao === "link" || x.acao === "nenhuma" ? `<label class="f check"><input type="checkbox" data-k="novaAba" ${x.novaAba ? "checked" : ""}> Abrir em nova aba</label>` : ""}
             <label class="f"><span>Tempo deste banner (s) — 0 usa o padrão</span><input type="number" min="0" max="120" data-k="duracao" value="${+x.duracao || 0}"></label>
             <label class="f"><span>Prioridade (maior aparece primeiro)</span><input type="number" min="0" max="100" data-k="prioridade" value="${+x.prioridade || 0}"></label>
             <label class="f"><span>Cor de fundo</span><input type="color" data-k="corFundo" value="${esc(x.corFundo || "#000000")}"></label>
@@ -1401,6 +1403,12 @@
       $$("[data-k]", card).forEach((inp) => inp.addEventListener(inp.type === "checkbox" || inp.tagName === "SELECT" ? "change" : "input", () => {
         const k = inp.dataset.k;
         x[k] = inp.type === "checkbox" ? inp.checked : inp.type === "number" ? +inp.value : inp.value.trim();
+        if (k === "link") {
+          if (x.link && !/^[a-z]+:/i.test(x.link) && /^[\w-]+(\.[\w-]+)+/.test(x.link)) x.link = "https://" + x.link;   // www.loja.com → https://www.loja.com
+          const sel = $("[data-k=acao]", card);
+          if (x.link && x.acao === "nenhuma") { x.acao = "link"; if (sel) sel.value = "link"; }
+          if (!x.link && x.acao === "link") { x.acao = "nenhuma"; if (sel) sel.value = "nenhuma"; }
+        }
         if (k === "titulo") $(".adm-card-top strong", card).textContent = inp.value || "Banner sem nome";
         if (k === "imagem") $(".bnr-thumb", card).innerHTML = safeUrl(x.imagem) ? `<img src="${esc(safeUrl(x.imagem))}" alt="">` : "🖼";
         if (k === "acao") abaBanners(body); else atualizarStatus();
@@ -1524,6 +1532,97 @@
     const d = p.dias && p.dias.length ? p.dias : [];
     const dias = d.length === 7 || !d.length ? "Todos os dias" : d.join() === "1,2,3,4,5" ? "Seg–Sex" : d.join() === "0,6" ? "Fim de semana" : d.map((k) => BNR_DIAS[k]).join(", ");
     return `${tipoProg(p.tipo)[1]} ${dias}${p.inicio && p.fim ? ` · ${p.inicio}–${p.fim}` : " · defina o horário"}`;
+  }
+
+  // =====================================================================
+  // PUBLICAR NO GITHUB — o painel grava data/config.json (e as imagens enviadas) direto no repositório.
+  // O token fica só neste navegador; nunca vai para o config.json nem para o site.
+  // =====================================================================
+  const LS_GH = "radioapp.github.v1";
+  const ghCfg = () => { try { return Object.assign({ repo: "eliaspgon-web/radio-frances-fm", ramo: "main", token: "" }, JSON.parse(lsGet(LS_GH) || "{}")); } catch (e) { return { repo: "eliaspgon-web/radio-frances-fm", ramo: "main", token: "" }; } };
+  const ghPronto = () => { const g = ghCfg(); return !!(g.token && /^[\w.-]+\/[\w.-]+$/.test(g.repo)); };
+  async function ghApi(caminho, opcoes = {}) {
+    const g = ghCfg();
+    const r = await fetch("https://api.github.com/repos/" + g.repo + caminho, Object.assign({}, opcoes, { headers: Object.assign({ Authorization: "Bearer " + g.token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }, opcoes.headers || {}) }));
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const msg = r.status === 401 ? "token inválido ou vencido" : r.status === 403 ? "o token não tem permissão de escrita neste repositório" : r.status === 404 ? "repositório ou arquivo não encontrado (confira o nome e as permissões do token)" : r.status === 409 ? "o arquivo mudou no GitHub ao mesmo tempo; tente de novo" : j.message || "erro " + r.status;
+      const e = new Error(msg); e.status = r.status; throw e;
+    }
+    return j;
+  }
+  const b64Texto = (txt) => { const b = new TextEncoder().encode(txt); let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
+  const b64Arquivo = (file) => new Promise((ok, ko) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(",")[1]); fr.onerror = ko; fr.readAsDataURL(file); });
+  async function ghGravar(caminho, conteudoB64, mensagem) {
+    const g = ghCfg();
+    for (let tentativa = 0; tentativa < 2; tentativa++) {
+      let sha;
+      try { sha = (await ghApi("/contents/" + caminho + "?ref=" + encodeURIComponent(g.ramo))).sha; } catch (e) { if (e.status !== 404) throw e; }
+      try {
+        return await ghApi("/contents/" + caminho, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: mensagem, content: conteudoB64, branch: g.ramo, sha }) });
+      } catch (e) { if (e.status !== 409 || tentativa) throw e; }   // conflito (ex.: robô das notícias): busca o sha de novo e repete
+    }
+  }
+  async function publicarNoGitHub(cfg) {
+    const autor = sessao ? (sessao.nome || sessao.usuario) : "painel";
+    const limpo = clone(cfg); if (limpo.noticias) delete limpo.noticias.previa;   // notícias de amostra só da prévia
+    let txt = JSON.stringify(limpo, null, 2);
+    // prévia do Claude: as imagens do app vêm embutidas; volta para o caminho original do arquivo
+    Object.entries(window.RADIO_ASSETS || {}).forEach(([caminho, dados]) => { txt = txt.split(dados).join(caminho); });
+    await ghGravar("data/config.json", b64Texto(txt + "\n"), `Painel: alterações de ${autor}`);
+  }
+  const ghPrevias = {};   // imagens recém-enviadas: mostra a cópia local até o GitHub Pages publicar (~1 min)
+  async function ghEnviarImagem(file) {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const nome = file.name.replace(/\.[^.]+$/, "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "imagem";
+    const caminho = `assets/uploads/${new Date().toISOString().slice(0, 10)}-${Date.now().toString(36)}-${nome}.${ext}`;
+    await ghGravar(caminho, await b64Arquivo(file), "Painel: imagem " + file.name);
+    ghPrevias[caminho] = URL.createObjectURL(file);
+    return caminho;
+  }
+
+  // ----- aba Publicar no GitHub (painel) -----
+  function abaGitHub(body) {
+    const g = ghCfg();
+    body.innerHTML = `
+      <div class="adm-head"><h3>Publicar no GitHub</h3><span class="gh-status ${ghPronto() ? "ok" : ""}">${ghPronto() ? "✅ Conectado: Salvar alterações publica no app" : "⚪ Não conectado"}</span></div>
+      <article class="adm-card">
+        <p class="hint" style="margin-top:0">Com o GitHub conectado, cada <b>Salvar alterações</b> grava a configuração no repositório e o app no ar se atualiza para todos os ouvintes em cerca de 1 minuto. As imagens enviadas pelo painel também vão para o repositório. O token fica guardado <b>só neste navegador</b>.</p>
+        <div class="grid">
+          <label class="f"><span>Repositório (dono/nome)</span><input data-gh="repo" value="${esc(g.repo)}" placeholder="eliaspgon-web/radio-frances-fm"></label>
+          <label class="f"><span>Ramo</span><input data-gh="ramo" value="${esc(g.ramo)}" placeholder="main"></label>
+          <label class="f full"><span>Token de acesso do GitHub</span><span class="pw"><input type="password" data-gh="token" value="${esc(g.token)}" placeholder="github_pat_…" autocomplete="off" spellcheck="false"><button type="button" class="pw-eye" aria-label="Mostrar token">👁</button></span></label>
+        </div>
+        <div class="adm-actions" style="margin-top:12px"><button class="btn primary" data-gh-salvar>Salvar e testar conexão</button>${g.token ? `<button class="btn ghost" data-gh-sair>Desconectar</button>` : ""}</div>
+        <small class="test-out" data-gh-out></small>
+      </article>
+      <article class="adm-card gh-passos">
+        <div class="adm-card-top"><span class="drag">?</span><strong>Como criar o token (uma vez só)</strong></div>
+        <ol>
+          <li>Entre no GitHub com a conta dona do repositório e abra <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>.</li>
+          <li>Em <b>Token name</b> escreva <i>Painel Francês FM</i>. Em <b>Expiration</b> escolha a validade (ex.: 1 ano).</li>
+          <li>Em <b>Repository access</b> marque <b>Only select repositories</b> e escolha <b>radio-frances-fm</b>.</li>
+          <li>Em <b>Permissions › Repository permissions</b>, mude <b>Contents</b> para <b>Read and write</b>. Não precisa de mais nada.</li>
+          <li>Clique em <b>Generate token</b>, copie o código (começa com <code>github_pat_</code>) e cole no campo acima.</li>
+        </ol>
+        <p class="hint">Esse token só consegue mexer nos arquivos deste repositório. Se perder o celular ou computador, apague o token em <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a>.</p>
+      </article>`;
+    olhinho(body);
+    const out = $("[data-gh-out]", body);
+    $("[data-gh-salvar]", body).onclick = async () => {
+      const novo = {}; $$("[data-gh]", body).forEach((i) => (novo[i.dataset.gh] = i.value.trim()));
+      novo.repo = novo.repo.replace(/^https?:\/\/github\.com\//, "").replace(/\.git$|\/$/g, "");
+      lsSet(LS_GH, JSON.stringify(novo));
+      out.className = "test-out"; out.textContent = "Testando…";
+      try {
+        const repo = await ghApi("");
+        if (!repo.permissions || !repo.permissions.push) throw new Error("o token não tem permissão de escrita (Contents: Read and write)");
+        out.className = "test-out ok"; out.textContent = `✓ Conectado a ${repo.full_name}. Agora "Salvar alterações" publica no app.`;
+        $(".gh-status", body).className = "gh-status ok"; $(".gh-status", body).textContent = "✅ Conectado: Salvar alterações publica no app";
+      } catch (e) { out.className = "test-out err"; out.textContent = "✗ " + e.message; }
+    };
+    const sair = $("[data-gh-sair]", body);
+    if (sair) sair.onclick = () => { const g2 = ghCfg(); g2.token = ""; lsSet(LS_GH, JSON.stringify(g2)); abaGitHub(body); toast("Token removido deste navegador"); };
   }
 
   // ----- aba Aparência -----
@@ -1778,7 +1877,7 @@
 
   // ----- aba Usuários (só administradores) -----
   async function apiUsuarios(dados) {
-    if (PREVIEW) {
+    if (PREVIEW || ESTATICO) {
       let l = await usuariosPrevia();
       if (dados.acao === "salvar") {
         const login = String(dados.usuario || "").trim().toLowerCase();
@@ -1884,7 +1983,7 @@
       const erro = (m) => { out.textContent = m; out.className = "test-out err"; };
       if (a !== b) return erro("As novas senhas não conferem.");
       if (a.length < 8) return erro("A nova senha precisa ter pelo menos 8 caracteres.");
-      if (PREVIEW) {
+      if (PREVIEW || ESTATICO) {
         const l = await usuariosPrevia(), u = l.find((x) => x.usuario === sessao.usuario);
         if (!u || u.hash !== (await sha(atual))) return erro("Senha atual incorreta.");
         u.hash = await sha(a); lsSet(LS_USERS, JSON.stringify(l));
@@ -1904,7 +2003,21 @@
     rascunho.radios.forEach((r) => (r.id = r.id || uid()));
     if (PREVIEW) {
       lsSet(LS_CFG, JSON.stringify(rascunho));
-      aplicarNovaConfig(); toast("Salvo neste navegador (prévia)", "ok"); return;
+      aplicarNovaConfig();
+      if (!ghPronto()) { toast("Salvo neste navegador (prévia). Para publicar no app, conecte o GitHub na aba 🔗 Publicar no GitHub."); return; }
+      try { await publicarNoGitHub(rascunho); toast("Publicado no GitHub. O app atualiza para todos em cerca de 1 minuto.", "ok"); }
+      catch (e) { toast(e.status ? "Não publicou: " + e.message : "Salvo aqui, mas esta prévia do Claude bloqueia o envio ao GitHub. Publique pelo painel do app (endereço do app + #admin).", "err"); }
+      return;
+    }
+    if (ESTATICO) {   // GitHub Pages (sem servidor PHP): publica gravando no repositório
+      if (!ghPronto()) { toast("Para publicar, conecte o GitHub na aba 🔗 Publicar no GitHub", "err"); return; }
+      const bt = $("[data-act=save]"); const txt = bt ? bt.textContent : ""; if (bt) { bt.disabled = true; bt.textContent = "Publicando…"; }
+      try {
+        await publicarNoGitHub(rascunho);
+        aplicarNovaConfig(); toast("Publicado no GitHub. O app atualiza para todos em cerca de 1 minuto.", "ok");
+      } catch (e) { toast("Não publicou: " + e.message, "err"); }
+      if (bt) { bt.disabled = false; bt.textContent = txt; }
+      return;
     }
     try {
       const r = await fetch(API + "config.php", { method: "POST", headers: authH({ "Content-Type": "application/json" }), body: JSON.stringify(rascunho) });
