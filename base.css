@@ -404,3 +404,59 @@ body.np-programa .np-cover:not(.bola){border-radius:12px}
 .gh-aviso{border:1px solid #f5c26b;background:#fff8e8}
 .gh-aviso strong{display:block;color:#8a5a00;margin-bottom:4px}
 .gh-aviso p{margin:0 0 10px;color:#5d4a20;font-size:.9rem}
+
+
+/* ===== Painel: Audiência › Mapa (geografia pelo IP e origem do acesso) ===== */
+.seg.sm button{padding:5px 10px;font-size:.76rem}
+.seg button small{font-weight:600;opacity:.6}
+.rel-sub{margin:16px 0 8px;align-items:center}
+.viz-box.sm.alto{height:250px}
+.mapa-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,1fr);gap:12px;align-items:stretch;margin-bottom:12px}
+.mapa-grid .viz-card{margin-bottom:0;min-width:0}
+@media (max-width:860px){.mapa-grid{grid-template-columns:1fr}}
+.mapa-trilha{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.86rem;color:#8a90a0}
+.mapa-trilha button{border:0;background:none;padding:2px 0;font-weight:700;font-size:.86rem;color:#256abf;cursor:pointer}
+.mapa-trilha button:disabled{color:#14181f;cursor:default}
+.mapa-box{position:relative;height:440px;border-radius:10px;overflow:hidden;background:#f4f7fb;border:1px solid #e3e6ed}
+@media (max-width:860px){.mapa-box{height:320px}}
+svg.mapa{display:block;width:100%;height:100%;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+svg.mapa:active{cursor:grabbing}
+svg.mapa path[data-k],svg.mapa circle{cursor:pointer;transition:filter .12s}
+svg.mapa path[data-k]:hover{filter:brightness(.9)}
+svg.mapa path.sel{pointer-events:none}
+svg.mapa circle:hover{fill-opacity:1}
+svg.mapa circle.vivo{animation:mapa-vivo 1.8s ease-in-out infinite}
+@keyframes mapa-vivo{50%{fill-opacity:.4}}
+@media (prefers-reduced-motion:reduce){svg.mapa circle.vivo{animation:none}}
+.mapa-zoom{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.mapa-zoom button{width:36px;height:36px;border:0;border-bottom:1px solid #e3e6ed;background:#fff;font-size:1.1rem;font-weight:700;color:#2b3040;cursor:pointer}
+.mapa-zoom button:last-child{border-bottom:0}
+.mapa-zoom button:hover{background:#eef1f8}
+.mapa-tip{position:absolute;z-index:2;pointer-events:none;background:#14181f;color:#fff;border-radius:8px;padding:8px 10px;font-size:.76rem;max-width:240px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.mapa-tip strong{display:block;font-size:.82rem;margin-bottom:4px}
+.mapa-tip div{display:grid;grid-template-columns:1fr auto;gap:2px 14px}
+.mapa-tip div span{opacity:.75}
+.mapa-tip em,.mapa-tip small{display:block;opacity:.7;font-style:normal;margin-top:4px}
+.mapa-leg{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:10px;font-size:.74rem;color:#5b6170}
+.mapa-leg .lg{display:inline-flex;align-items:center;gap:5px}
+.mapa-leg i{width:14px;height:10px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.08)}
+.mapa-leg i.bo{width:10px;height:10px;border-radius:50%}
+.mapa-lista{display:flex;flex-direction:column;gap:10px}
+.mapa-lista .seg{align-self:flex-start;flex-wrap:wrap}
+.mapa-rol{overflow:auto;max-height:440px;flex:1}
+.mapa-rol table{width:100%;border-collapse:collapse;font-size:.8rem}
+.mapa-rol th{position:sticky;top:0;background:#fff;color:#5b6170;font-weight:700;text-align:right;padding:6px 4px;border-bottom:1px solid #e3e6ed;white-space:nowrap}
+.mapa-rol th.on{color:#14181f}
+.mapa-rol th:first-child,.mapa-rol td:first-child{text-align:left}
+.mapa-rol td{padding:6px 4px;border-bottom:1px solid #eef0f4;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mapa-rol td:first-child{position:relative;white-space:normal;min-width:84px}
+.mapa-rol .barra{position:absolute;left:0;top:4px;bottom:4px;background:#cde2fb;border-radius:4px}
+.mapa-rol .nm{position:relative;font-weight:600;color:#14181f}
+.mapa-rol tbody tr{cursor:pointer}
+.mapa-rol tbody tr:hover td,.mapa-rol tbody tr:focus td{background:#f4f7fb;outline:0}
+@media print{
+  .rp-mapa{border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:12px;break-inside:avoid}
+  .rp-mapa svg{display:block;width:100%;height:95mm}
+  .rp-mapa .mapa-leg{font-size:9.5px;color:#444}
+  .rp-tabela+.rp-tabela{margin-top:14px}
+}
