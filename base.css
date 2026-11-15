@@ -460,3 +460,12 @@ svg.mapa circle.vivo{animation:mapa-vivo 1.8s ease-in-out infinite}
   .rp-mapa .mapa-leg{font-size:9.5px;color:#444}
   .rp-tabela+.rp-tabela{margin-top:14px}
 }
+/* mapas dentro do relatório de audiência */
+.rel-mapas svg.mapa-est{display:block;width:100%;height:auto;max-height:420px;border-radius:10px}
+.rel-mapas .mapa-leg{margin-top:8px}
+@media print{
+  #relatorio-print .rp-mapas{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #relatorio-print .rp-mapas figure{margin:0}
+  #relatorio-print .rp-mapas figcaption{font-weight:700;font-size:11px;margin-bottom:4px}
+  #relatorio-print .rp-mapas svg{display:block;width:100%;height:80mm}
+}

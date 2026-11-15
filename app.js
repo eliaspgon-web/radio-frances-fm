@@ -1849,7 +1849,8 @@
           <div class="viz-card"><div class="viz-h"><h4>Aparelhos por plataforma</h4></div><div class="viz-box sm"><canvas data-g="plat"></canvas></div></div>
         </div>
         ${umDia ? `<div class="viz-card"><div class="viz-h"><h4>Pico de ouvintes por hora</h4></div><div class="viz-box"><canvas data-g="hora"></canvas></div></div>` : ""}
-        ${geo ? `<div class="viz-h rel-sub"><h4>Onde estão os ouvintes e por onde chegam</h4><button class="btn ghost sm" data-vermapa>🗺 Ver no mapa</button></div>
+        ${geo ? `<div class="viz-h rel-sub"><h4>Onde estão os ouvintes e por onde chegam</h4><button class="btn ghost sm" data-vermapa>🗺 Abrir o mapa interativo</button></div>
+        <div class="viz-2 rel-mapas" data-relmapas><div class="viz-card"><p class="hint">Desenhando os mapas…</p></div></div>
         ${temLocal ? `<div class="viz-2">
           <div class="viz-card"><div class="viz-h"><h4>Ouvintes por estado — ${geo.estados.slice(0, 10).length} maiores</h4></div><div class="viz-box sm alto"><canvas data-g="uf"></canvas></div></div>
           <div class="viz-card"><div class="viz-h"><h4>Ouvintes por cidade — ${geo.cidades.slice(0, 10).length} maiores</h4></div><div class="viz-box sm alto"><canvas data-g="cid"></canvas></div></div>
@@ -1858,7 +1859,7 @@
         <details class="viz-card tabela" ${umDia ? "" : "open"}><summary>Tabela de dados</summary>
           <table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhasTabela.map((l) => `<tr>${l.map((c, i) => `<td>${i ? n0(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
         </details>
-        ${tabGeo.map((b) => `<details class="viz-card tabela"><summary>${b.titulo} <small>(${b.linhas.length})</small></summary>
+        ${tabGeo.map((b) => `<details class="viz-card tabela geo"><summary>${b.titulo} <small>(${b.linhas.length})</small></summary>
           <table><thead><tr>${b.cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${b.linhas.map((l) => `<tr>${l.map((c) => `<td>${typeof c === "number" ? n1(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></details>`).join("")}
       </div>`;
     const G = (n) => $(`[data-g="${n}"]`, alvo);
@@ -1883,7 +1884,28 @@
       }
     }
 
-    $("[data-print]", alvo).onclick = () => imprimirRelatorio(j, periodoTxt, kpis, cab, linhasTabela, { tabelas: tabGeo });
+    // mapas do relatório (mundo e Brasil) com os dados completos do período; as tabelas passam a ter todos os locais
+    let mapasHTML = "";
+    if (geo) {
+      Promise.all([carregarGeo(), apiGeo(j.de, j.ate, radioSel, { origem: "", pais: "", uf: "" })]).then(([base, g]) => {
+        const caixaM = $("[data-relmapas]", alvo); if (!caixaM) return;
+        if (!g.total || !g.total.sessoesLocalizadas) { caixaM.innerHTML = `<div class="viz-card"><p class="hint">Sem acessos localizados neste período.</p></div>`; return; }
+        const mundo = mapaEstatico(base, g, "mundo"), brasil = mapaEstatico(base, g, "BR");
+        mapasHTML = `<div class="rp-mapas"><figure><figcaption>Ouvintes por país</figcaption>${mundo}</figure>${brasil ? `<figure><figcaption>Brasil: ouvintes por estado e cidade</figcaption>${brasil}</figure>` : ""}</div>`;
+        caixaM.innerHTML = `<div class="viz-card"><div class="viz-h"><h4>Ouvintes por país</h4><small>${n0(g.paises.length)} países</small></div>${mundo}</div>` +
+          (brasil ? `<div class="viz-card"><div class="viz-h"><h4>Brasil: estados e cidades</h4><small>${n0(g.estados.filter((e) => e.pais === "BR").length)} estados · ${n0(g.cidades.filter((c) => c.pais === "BR").length)} cidades</small></div>${brasil}</div>` : "");
+        // tabelas completas (todas as linhas do período)
+        const blocosG = [{ titulo: "Países", cab: ["País", ...colsGeo], linhas: g.paises.map((r) => [nomePais(r.pais), ...nums(r)]) },
+          { titulo: "Estados", cab: ["Estado", ...colsGeo], linhas: g.estados.map((r) => [rotUF(r), ...nums(r)]) },
+          { titulo: "Cidades", cab: ["Cidade", ...colsGeo], linhas: g.cidades.map((r) => [rotCid(r), ...nums(r)]) },
+          { titulo: "Origem do acesso", cab: ["Origem", ...colsGeo], linhas: g.origens.map((r) => [NOME_ORIGEM[r.origem] || r.origem, ...nums(r)]) }];
+        tabGeo.splice(0, tabGeo.length, ...blocosG);
+        $$("details.tabela.geo", alvo).forEach((x) => x.remove());
+        $("#rel-atual", alvo).insertAdjacentHTML("beforeend", blocosG.map((b) => `<details class="viz-card tabela geo"><summary>${b.titulo} <small>(${b.linhas.length})</small></summary>
+          <table><thead><tr>${b.cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${b.linhas.map((l) => `<tr>${l.map((c) => `<td>${typeof c === "number" ? n1(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></details>`).join(""));
+      }).catch(() => { const c = $("[data-relmapas]", alvo); if (c) c.innerHTML = `<div class="viz-card"><p class="hint">Não foi possível desenhar os mapas agora.</p></div>`; });
+    }
+    $("[data-print]", alvo).onclick = () => imprimirRelatorio(j, periodoTxt, kpis, cab, linhasTabela, { tabelas: tabGeo, mapa: mapasHTML });
     $("[data-csv]", alvo).onclick = () => {
       const csv = [["Relatório de audiência", periodoTxt], [], ["Indicador", "Valor"], ...kpis.map(([t, v]) => [t, v]), [], cab, ...linhasTabela, ...tabGeo.flatMap((b) => [[], b.cab, ...b.linhas])]
         .map((l) => l.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
@@ -2004,6 +2026,39 @@
     svg.addEventListener("pointerdown", (e) => { if (!pts.size) { moveu = false; addEventListener("pointermove", mover); addEventListener("pointerup", soltar); addEventListener("pointercancel", soltar); } pts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY }); dist0 = 0; });
     svg.addEventListener("click", (e) => { if (moveu) { e.stopPropagation(); e.preventDefault(); } }, true);
     return { enquadrar, centrar, zoom, redesenhar: aplicar };
+  }
+
+  // Mapa estático (relatório e PDF): recorte em cores + bolhas de cidades com nomes, sem interação
+  function mapaEstatico(base, d, nivel, larguraPx = 560) {
+    const val = (r) => Number(r && r.ouvintes) || 0;
+    let caixa, formas, serie, chave, cidades;
+    if (nivel === "BR") {
+      const br = base.paises.find((x) => x.id === "BR"); if (!br) return "";
+      caixa = br.caixa; serie = d.estados.filter((e) => e.pais === "BR"); chave = (f) => f.uf;
+      formas = base.estados.filter((e) => e.pais === "BR").map((e) => ({ k: e.uf, d: e.d }));
+      cidades = d.cidades.filter((c) => c.pais === "BR");
+    } else {
+      caixa = [-170, mercY(78), 190, mercY(-56)]; serie = d.paises; chave = (f) => f.pais;
+      formas = base.paises.map((x) => ({ k: x.id, d: x.d })); cidades = d.cidades;
+    }
+    const m = 0.04, w = (caixa[2] - caixa[0]) * (1 + 2 * m), h = (caixa[3] - caixa[1]) * (1 + 2 * m), x0 = caixa[0] - (caixa[2] - caixa[0]) * m, y0 = caixa[1] - (caixa[3] - caixa[1]) * m;
+    const esc1 = w / larguraPx;   // unidades do mapa por pixel
+    const porK = new Map(serie.map((r) => [chave(r), r])), max = Math.max(0, ...serie.map(val));
+    const passo = (v) => (v > 0 && max > 0 ? Math.min(4, Math.max(0, Math.ceil(5 * Math.sqrt(v / max) - 1e-9) - 1)) : -1);
+    const fundo = nivel === "BR" ? base.paises.filter((x) => x.id !== "BR").map((x) => `<path d="${x.d}" fill="#eef1f6" stroke="#fff" stroke-width="${(0.6 * esc1).toFixed(3)}"/>`).join("") : "";
+    const recorte = formas.map((f) => { const r = porK.get(f.k), cor = r && val(r) > 0 ? AZUIS[passo(val(r))] : nivel === "BR" ? "#f7f9fc" : SEM_DADO;
+      return `<path d="${f.d}" fill="${cor}" stroke="#fff" stroke-width="${((nivel === "BR" ? 0.9 : 0.5) * esc1).toFixed(3)}"/>`; }).join("");
+    const bol = cidades.filter((c) => c.lat != null && c.lon != null && val(c) > 0).sort((a, b) => val(b) - val(a));
+    const bmax = Math.max(1, ...bol.map(val)), raio = (c) => (3 + 15 * Math.sqrt(val(c) / bmax)) * esc1;
+    const bolhas = bol.slice().reverse().map((c) => `<circle cx="${c.lon}" cy="${mercY(c.lat).toFixed(3)}" r="${raio(c).toFixed(3)}" fill="${COR_BOLHA}" fill-opacity=".8" stroke="#fff" stroke-width="${(1.5 * esc1).toFixed(3)}"/>`).join("");
+    const postos = [], fs = 11 * esc1;
+    const rotulos = bol.slice(0, nivel === "BR" ? 14 : 8).map((c) => { const x = c.lon, y = mercY(c.lat) - raio(c) - 3 * esc1, tw = (c.cidade.length * 6.4 + 6) * esc1;
+      if (postos.some((q) => x - tw / 2 < q[2] && x + tw / 2 > q[0] && y - fs < q[3] && y > q[1])) return ""; postos.push([x - tw / 2, y - fs, x + tw / 2, y]);
+      return `<text x="${x}" y="${y.toFixed(3)}" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="${fs.toFixed(3)}" fill="#14181f" stroke="#fff" stroke-width="${(3 * esc1).toFixed(3)}" stroke-linejoin="round" paint-order="stroke">${esc(c.cidade)}</text>`; }).join("");
+    const corte = (i) => (i === 4 ? max : max * Math.pow((i + 1) / 5, 2));
+    const faixas = max > 0 ? AZUIS.map((c, i) => ({ c, de: i ? Math.floor(corte(i - 1)) + 1 : 1, ate: Math.floor(corte(i)) })).filter((f) => f.ate >= f.de) : [];
+    const legenda = `<div class="mapa-leg"><span><b>${nivel === "BR" ? "Estados" : "Países"}</b> · ouvintes únicos</span><span class="lg"><i style="background:${nivel === "BR" ? "#f7f9fc" : SEM_DADO}"></i>sem acessos</span>${faixas.map((f) => `<span class="lg"><i style="background:${f.c}"></i>${f.de === f.ate ? n0(f.de) : n0(f.de) + "–" + n0(f.ate)}</span>`).join("")}<span class="lg"><i class="bo" style="background:${COR_BOLHA}"></i>cidades (tamanho = ouvintes)</span></div>`;
+    return `<svg class="mapa-est" xmlns="http://www.w3.org/2000/svg" viewBox="${x0.toFixed(3)} ${y0.toFixed(3)} ${w.toFixed(3)} ${h.toFixed(3)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mapa: ${nivel === "BR" ? "ouvintes por estado do Brasil" : "ouvintes por país"}"><rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="#f4f7fb"/>${fundo}${recorte}${bolhas}${rotulos}</svg>${legenda}`;
   }
 
   async function audMapa(alvo) {
