@@ -1591,7 +1591,7 @@
       const ag = new Date(), h = ag.getHours() + ag.getMinutes() / 60, base = Math.round(140 * curva(h));
       const serie = Array.from({ length: 60 }, (_, i) => { const t = new Date(ag - (59 - i) * 60000); const o = Math.round(140 * curva(t.getHours() + t.getMinutes() / 60) * (0.9 + rnd(t.getMinutes()) * 0.2)); return { hora: t.toTimeString().slice(0, 5), ouvintes: o, conectados: Math.round(o * 1.25) }; });
       const ouv = serie[59].ouvintes, porRadio = {}; ids.forEach((id, i) => (porRadio[id] = i === 0 ? Math.round(ouv * 0.72) : Math.round(ouv * 0.28 / Math.max(1, ids.length - 1))));
-      return { demo: true, conectados: Math.round(ouv * 1.25), ouvintes: ouv, porRadio, porPlataforma: { android: Math.round(ouv * 0.62), iphone: Math.round(ouv * 0.28), computador: Math.round(ouv * 0.1) }, noApp: Math.round(ouv * 0.35), ultimos60: serie, atualizado: ag.toISOString(), base };
+      return { demo: true, conectados: Math.round(ouv * 1.25), ouvintes: ouv, porRadio, porPlataforma: { android: Math.round(ouv * 0.62), iphone: Math.round(ouv * 0.28), computador: Math.round(ouv * 0.1) }, noApp: Math.round(ouv * 0.35), ultimos60: serie, atualizado: ag.toISOString(), base, locais: demoLocais(ouv) };
     }
     const dias = []; for (let d = de; d <= ate; d = somaDias(d, 1)) dias.push(d);
     const porDia = dias.map((d, i) => { const k = rnd(d.split("-").join("") * 1); const fim = [0, 6].includes(new Date(d + "T12:00:00").getDay()) ? 0.8 : 1; const u = Math.round((900 + k * 400) * fim); return { dia: d, ouvintesUnicos: u, sessoes: Math.round(u * 1.7), pico: Math.round((120 + k * 60) * fim), horas: Math.round(u * 0.62) }; });
@@ -1619,7 +1619,7 @@
   }
 
   async function apiAud(acao, de, ate, radio = "") {
-    if (PREVIEW || ESTATICO) return demoRadio(demoAud(acao, de, ate), radio);
+    if (PREVIEW || ESTATICO) { const j = demoRadio(demoAud(acao, de, ate), radio); if (acao !== "agora") { const g = demoGeo(de, ate, radio, { origem: "", pais: "", uf: "" }); j.geo = { total: g.total, paises: g.paises.slice(0, 15), estados: g.estados.slice(0, 15), cidades: g.cidades.slice(0, 15), origens: g.origens }; } return j; }
     const q = acao === "agora" ? "acao=agora" : `acao=relatorio&de=${de}&ate=${ate}&radio=${encodeURIComponent(radio)}`;
     const r = await fetch(API + "audiencia.php?" + q + "&t=" + Date.now(), { headers: authH(), cache: "no-store" });
     if (r.status === 401) { sessaoExpirou(); throw new Error("Sessão expirada"); }
@@ -1642,11 +1642,12 @@
     pararAudiencia();
     body.innerHTML = `
       <div class="adm-head"><h3>Audiência do app</h3>
-        <div class="seg"><button data-sub="vivo" class="${audSub === "vivo" ? "on" : ""}">● Ao vivo</button><button data-sub="relatorio" class="${audSub === "relatorio" ? "on" : ""}">📈 Relatórios</button></div></div>
+        <div class="seg"><button data-sub="vivo" class="${audSub === "vivo" ? "on" : ""}">● Ao vivo</button><button data-sub="relatorio" class="${audSub === "relatorio" ? "on" : ""}">📈 Relatórios</button><button data-sub="mapa" class="${audSub === "mapa" ? "on" : ""}">🗺 Mapa</button></div></div>
       ${PREVIEW || ESTATICO ? `<p class="hint demo">🧪 <b>Dados de demonstração.</b> A medição real funciona com o app no servidor com PHP (ex.: francesfm.com.br/app): cada aparelho envia um sinal anônimo a cada 30 s.</p>` : ""}
       <div data-aud></div>`;
     $$("[data-sub]", body).forEach((b) => (b.onclick = () => { audSub = b.dataset.sub; abaAudiencia(body); }));
     const alvo = $("[data-aud]", body);
+    if (audSub === "mapa") return audMapa(alvo);   // o mapa é desenhado pelo próprio app, sem biblioteca externa
     try { await carregarChart(); } catch (e) { alvo.innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
     if (audSub === "vivo") return audVivo(alvo);
     return audRelatorio(alvo);
@@ -1722,6 +1723,14 @@
       ? j.picoPorHora.map((v, h) => [String(h).padStart(2, "0") + ":00", v])
       : j.porDia.map((d) => [fmtDia(d.dia), d.ouvintesUnicos, d.pico, d.horas, d.sessoes]);
     const cab = umDia ? ["Hora", "Pico de ouvintes simultâneos"] : ["Dia", "Ouvintes únicos", "Pico simultâneo", "Horas ouvidas", "Sessões"];
+    // geografia (pelo IP) e origem do acesso, no mesmo período e rádio do relatório
+    const geo = j.geo || null, temLocal = !!(geo && geo.total.sessoesLocalizadas), nums = (r) => [r.ouvintes, r.sessoes, r.horas], colsGeo = ["Ouvintes únicos", "Sessões", "Horas ouvidas"];
+    const rotUF = (e) => e.nome + (e.pais !== "BR" ? " · " + e.pais : ""), rotCid = (c) => c.cidade + (c.uf && c.uf.length <= 3 ? " – " + c.uf : "") + (c.pais !== "BR" ? " · " + c.pais : "");
+    const tabGeo = !geo ? [] : [
+      ...(temLocal ? [{ titulo: "Países", cab: ["País", ...colsGeo], linhas: geo.paises.map((r) => [nomePais(r.pais), ...nums(r)]) },
+                      { titulo: "Estados", cab: ["Estado", ...colsGeo], linhas: geo.estados.map((r) => [rotUF(r), ...nums(r)]) },
+                      { titulo: "Cidades", cab: ["Cidade", ...colsGeo], linhas: geo.cidades.map((r) => [rotCid(r), ...nums(r)]) }] : []),
+      { titulo: "Origem do acesso", cab: ["Origem", ...colsGeo], linhas: geo.origens.map((r) => [NOME_ORIGEM[r.origem] || r.origem, ...nums(r)]) }];
     $("[data-rel]", alvo).innerHTML = `
       <div class="rel" id="rel-atual">
         <div class="rel-tit"><h4>Relatório de audiência — ${esc(periodoTxt)}</h4>${j.demo ? `<em class="tag">demonstração</em>` : ""}</div>
@@ -1734,9 +1743,17 @@
           <div class="viz-card"><div class="viz-h"><h4>Aparelhos por plataforma</h4></div><div class="viz-box sm"><canvas data-g="plat"></canvas></div></div>
         </div>
         ${umDia ? `<div class="viz-card"><div class="viz-h"><h4>Pico de ouvintes por hora</h4></div><div class="viz-box"><canvas data-g="hora"></canvas></div></div>` : ""}
+        ${geo ? `<div class="viz-h rel-sub"><h4>Onde estão os ouvintes e por onde chegam</h4><button class="btn ghost sm" data-vermapa>🗺 Ver no mapa</button></div>
+        ${temLocal ? `<div class="viz-2">
+          <div class="viz-card"><div class="viz-h"><h4>Ouvintes por estado — ${geo.estados.slice(0, 10).length} maiores</h4></div><div class="viz-box sm alto"><canvas data-g="uf"></canvas></div></div>
+          <div class="viz-card"><div class="viz-h"><h4>Ouvintes por cidade — ${geo.cidades.slice(0, 10).length} maiores</h4></div><div class="viz-box sm alto"><canvas data-g="cid"></canvas></div></div>
+          <div class="viz-card"><div class="viz-h"><h4>Ouvintes por origem do acesso</h4></div><div class="viz-box sm alto"><canvas data-g="orig"></canvas></div></div>
+        </div>` : `<p class="hint">Ainda não há acessos localizados neste período. A localização por IP vale para os acessos feitos a partir desta atualização.</p>`}` : ""}
         <details class="viz-card tabela" ${umDia ? "" : "open"}><summary>Tabela de dados</summary>
           <table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhasTabela.map((l) => `<tr>${l.map((c, i) => `<td>${i ? n0(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
         </details>
+        ${tabGeo.map((b) => `<details class="viz-card tabela"><summary>${b.titulo} <small>(${b.linhas.length})</small></summary>
+          <table><thead><tr>${b.cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${b.linhas.map((l) => `<tr>${l.map((c) => `<td>${typeof c === "number" ? n1(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></details>`).join("")}
       </div>`;
     const G = (n) => $(`[data-g="${n}"]`, alvo);
     if (umDia) {
@@ -1750,9 +1767,19 @@
     grafico(G("radio"), barras(j.porRadio.map((r) => nomeCurto(r.radio)), j.porRadio.map((r) => r.horas), "Horas ouvidas", j.porRadio.map((r) => (!radioSel || r.radio === radioSel ? corRadio(r.radio) : "#c9cdd6")), true));
     grafico(G("plat"), barras(j.porPlataforma.map((p) => NOME_PLAT[p.plataforma] || p.plataforma), j.porPlataforma.map((p) => p.aparelhos), "Aparelhos", corPrincipal, true));
 
-    $("[data-print]", alvo).onclick = () => imprimirRelatorio(j, periodoTxt, kpis, cab, linhasTabela);
+    if (geo) {
+      const v = $("[data-vermapa]", alvo); if (v) v.onclick = () => { audSub = "mapa"; mapaEst.agora = false; abaAudiencia(alvo.closest(".adm-body")); };
+      if (temLocal) {
+        const e10 = geo.estados.slice(0, 10), c10 = geo.cidades.slice(0, 10);
+        grafico(G("uf"), barras(e10.map(rotUF), e10.map((r) => r.ouvintes), "Ouvintes únicos", corPrincipal, true));
+        grafico(G("cid"), barras(c10.map(rotCid), c10.map((r) => r.ouvintes), "Ouvintes únicos", corPrincipal, true));
+        grafico(G("orig"), barras(geo.origens.map((r) => NOME_ORIGEM[r.origem] || r.origem), geo.origens.map((r) => r.ouvintes), "Ouvintes únicos", corPrincipal, true));
+      }
+    }
+
+    $("[data-print]", alvo).onclick = () => imprimirRelatorio(j, periodoTxt, kpis, cab, linhasTabela, { tabelas: tabGeo });
     $("[data-csv]", alvo).onclick = () => {
-      const csv = [["Relatório de audiência", periodoTxt], [], ["Indicador", "Valor"], ...kpis.map(([t, v]) => [t, v]), [], cab, ...linhasTabela]
+      const csv = [["Relatório de audiência", periodoTxt], [], ["Indicador", "Valor"], ...kpis.map(([t, v]) => [t, v]), [], cab, ...linhasTabela, ...tabGeo.flatMap((b) => [[], b.cab, ...b.linhas])]
         .map((l) => l.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
       const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
       a.download = `audiencia_${radioSel || "todas"}_${j.de}${umDia ? "" : "_a_" + j.ate}.csv`; document.body.appendChild(a); a.click(); a.remove();
@@ -1761,19 +1788,280 @@
   }
 
   // versão para impressão: abre o diálogo do navegador (escolha "Salvar como PDF" para gerar o arquivo)
-  function imprimirRelatorio(j, periodoTxt, kpis, cab, linhas) {
+  function imprimirRelatorio(j, periodoTxt, kpis, cab, linhas, extra = {}) {
+    const celula = (c) => (typeof c === "number" ? n1(c) : esc(c));
     const imgs = graficos.map((g) => ({ titulo: g.canvas.closest(".viz-card").querySelector("h4").textContent, src: g.toBase64Image("image/png", 1) }));
     let p = $("#relatorio-print"); if (p) p.remove();
     p = document.createElement("div"); p.id = "relatorio-print";
     p.innerHTML = `
-      <header><div>${imgHTML(config.site.logo, config.site.nome, "rp-logo")}</div><div><h1>Relatório de audiência</h1><p>${esc(config.site.nome || "")} · ${esc(periodoTxt)}</p></div></header>
+      <header><div>${imgHTML(config.site.logo, config.site.nome, "rp-logo")}</div><div><h1>${esc(extra.titulo || "Relatório de audiência")}</h1><p>${esc(config.site.nome || "")} · ${esc(periodoTxt)}</p></div></header>
       ${j.demo ? `<p class="rp-demo">Dados de demonstração</p>` : ""}
       <section class="rp-kpis">${kpis.map(([t, v, d]) => `<div><span>${esc(t)}</span><b>${v}</b><small>${esc(d)}</small></div>`).join("")}</section>
-      <section class="rp-graficos">${imgs.map((i) => `<figure><figcaption>${esc(i.titulo)}</figcaption><img src="${i.src}" alt="${esc(i.titulo)}"></figure>`).join("")}</section>
-      <section class="rp-tabela"><h2>Dados</h2><table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhas.map((l) => `<tr>${l.map((c, i) => `<td>${i ? n0(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></section>
-      <footer>Gerado em ${new Date().toLocaleString("pt-BR")} por ${esc(sessao ? sessao.nome : "")} · Medição anônima: cada aparelho é contado por um código aleatório, sem dados pessoais.</footer>`;
+      ${extra.mapa ? `<section class="rp-mapa">${extra.mapa}</section>` : ""}
+      ${imgs.length ? `<section class="rp-graficos">${imgs.map((i) => `<figure><figcaption>${esc(i.titulo)}</figcaption><img src="${i.src}" alt="${esc(i.titulo)}"></figure>`).join("")}</section>` : ""}
+      ${cab ? `<section class="rp-tabela"><h2>Dados</h2><table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhas.map((l) => `<tr>${l.map((c, i) => `<td>${i ? n0(c) : esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></section>` : ""}
+      ${(extra.tabelas || []).filter((b) => b.linhas.length).map((b) => `<section class="rp-tabela"><h2>${esc(b.titulo)}</h2><table><thead><tr>${b.cab.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${b.linhas.map((l) => `<tr>${l.map(celula).join("</td><td>").replace(/^/, "<td>")}</td></tr>`).join("")}</tbody></table></section>`).join("")}
+      <footer>Gerado em ${new Date().toLocaleString("pt-BR")} por ${esc(sessao ? sessao.nome : "")} · Medição anônima: cada aparelho é contado por um código aleatório, sem dados pessoais. A localização é aproximada (cidade do provedor de internet); o IP não é gravado.</footer>`;
     document.body.appendChild(p);   // fica oculto na tela; só aparece na impressão (removido ao fechar o painel)
     setTimeout(() => { try { window.print(); } catch (e) {} if (PREVIEW) toast("Na prévia a impressão é bloqueada; no app publicado abre o diálogo de impressão/PDF."); }, 300);
+  }
+
+  // ----- Audiência › Mapa: onde estão os ouvintes (país, estado, cidade pelo IP) e por onde chegam (origem) -----
+  const NOME_ORIGEM = { instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", youtube: "YouTube", tiktok: "TikTok", x: "X (Twitter)", telegram: "Telegram", busca: "Busca (Google etc.)", site: "Site da rádio", app: "App instalado", tv: "TV", direto: "Acesso direto", outro: "Outros sites" };
+  const AZUIS = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"];   // sequencial de um matiz: claro = pouco, escuro = muito
+  const COR_BOLHA = "#eb6834", SEM_DADO = "#e9ecf1";
+  const METRICAS = { ouvintes: "Ouvintes únicos", sessoes: "Sessões", horas: "Horas ouvidas", conectados: "Conectados agora" };
+  let geoBase = null, mapaEst = { metrica: "ouvintes", origem: "", pais: "", uf: "", ufNome: "", agora: false, lista: "" };
+  const nomesPais = (() => { try { return new Intl.DisplayNames(["pt-BR"], { type: "region" }); } catch (e) { return null; } })();
+  const nomePais = (c) => { try { return (nomesPais && nomesPais.of(c)) || c; } catch (e) { return c; } };
+  const enc = encodeURIComponent;
+  const n1 = (v) => Number(v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+
+  // projeção de Mercator em "graus": x = longitude, y cresce para o sul
+  const mercY = (lat) => { const f = (Math.max(-84, Math.min(84, lat)) * Math.PI) / 180; return -(180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + f / 2)); };
+  const MUNDO = [-180, mercY(84), 180, mercY(-58)];
+  function prepararForma(geom) {
+    const pols = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates, caixas = []; let d = "";
+    for (const pol of pols) {
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      pol.forEach((anel, i) => { d += "M" + anel.map(([lo, la]) => { const y = mercY(la); if (!i) { x0 = Math.min(x0, lo); x1 = Math.max(x1, lo); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } return lo.toFixed(2) + " " + y.toFixed(2); }).join("L") + "Z"; });
+      caixas.push({ x0, y0, x1, y1, a: (x1 - x0) * (y1 - y0) });
+    }
+    const amax = Math.max(...caixas.map((c) => c.a)), g = caixas.filter((c) => c.a >= amax * 0.25);   // ignora ilhas e territórios distantes ao enquadrar
+    return { d, caixa: [Math.min(...g.map((c) => c.x0)), Math.min(...g.map((c) => c.y0)), Math.max(...g.map((c) => c.x1)), Math.max(...g.map((c) => c.y1))] };
+  }
+  async function carregarGeo() {
+    if (geoBase) return geoBase;
+    const [m, e] = await Promise.all(["assets/geo/mundo.json", "assets/geo/estados.json"].map((u) => fetch(u).then((r) => { if (!r.ok) throw new Error("x"); return r.json(); }))).catch(() => { throw new Error("Não foi possível carregar o desenho do mapa (assets/geo/)."); });
+    geoBase = { paises: m.features.map((f) => Object.assign({ id: f.properties.id }, prepararForma(f.geometry))),
+                estados: e.features.map((f) => Object.assign({ pais: f.properties.pais, uf: f.properties.uf, nome: f.properties.nome }, prepararForma(f.geometry))) };
+    return geoBase;
+  }
+
+  // demonstração (prévia e versão sem servidor)
+  const DEMO_CIDADES = [["Maceió", "AL", "Alagoas", "BR", -9.67, -35.74, 300], ["Arapiraca", "AL", "Alagoas", "BR", -9.75, -36.66, 60], ["Marechal Deodoro", "AL", "Alagoas", "BR", -9.71, -35.9, 35], ["Rio Largo", "AL", "Alagoas", "BR", -9.48, -35.85, 25], ["Penedo", "AL", "Alagoas", "BR", -10.29, -36.59, 14],
+    ["Caruaru", "PE", "Pernambuco", "BR", -8.28, -35.97, 120], ["Recife", "PE", "Pernambuco", "BR", -8.05, -34.88, 70], ["Bonito", "PE", "Pernambuco", "BR", -8.47, -35.73, 30], ["Rio Formoso", "PE", "Pernambuco", "BR", -8.66, -35.16, 22], ["Garanhuns", "PE", "Pernambuco", "BR", -8.89, -36.49, 16],
+    ["Aracaju", "SE", "Sergipe", "BR", -10.91, -37.07, 18], ["João Pessoa", "PB", "Paraíba", "BR", -7.12, -34.86, 12], ["Salvador", "BA", "Bahia", "BR", -12.97, -38.5, 14], ["São Paulo", "SP", "São Paulo", "BR", -23.55, -46.63, 40], ["Rio de Janeiro", "RJ", "Rio de Janeiro", "BR", -22.91, -43.17, 18],
+    ["Brasília", "DF", "Distrito Federal", "BR", -15.79, -47.88, 9], ["Belo Horizonte", "MG", "Minas Gerais", "BR", -19.92, -43.94, 7], ["Curitiba", "PR", "Paraná", "BR", -25.43, -49.27, 4],
+    ["Lisboa", "11", "Lisboa", "PT", 38.72, -9.14, 9], ["Porto", "13", "Porto", "PT", 41.15, -8.61, 4], ["Orlando", "FL", "Florida", "US", 28.54, -81.38, 7], ["Boston", "MA", "Massachusetts", "US", 42.36, -71.06, 5], ["Newark", "NJ", "New Jersey", "US", 40.74, -74.17, 4],
+    ["Toronto", "ON", "Ontario", "CA", 43.65, -79.38, 3], ["Londres", "ENG", "Inglaterra", "GB", 51.51, -0.13, 3], ["Paris", "IDF", "Île-de-France", "FR", 48.86, 2.35, 2], ["Tóquio", "13", "Tóquio", "JP", 35.68, 139.69, 2], ["Luanda", "LUA", "Luanda", "AO", -8.84, 13.23, 2], ["Buenos Aires", "C", "Buenos Aires", "AR", -34.6, -58.38, 2], ["Sydney", "NSW", "New South Wales", "AU", -33.87, 151.21, 1]];
+  const DEMO_ORIGENS = { app: 0.34, direto: 0.2, instagram: 0.16, whatsapp: 0.1, site: 0.08, facebook: 0.05, busca: 0.04, youtube: 0.02, tv: 0.01 };
+  function demoGeo(de, ate, radio, f) {
+    let dias = 1; for (let d = de; d < ate; d = somaDias(d, 1)) dias++;
+    const ids = (config.radios || []).map((r) => r.id), fr = !radio ? 1 : ids.indexOf(radio) === 0 ? 0.72 : 0.28 / Math.max(1, ids.length - 1);
+    const k = 3 * Math.pow(dias, 0.75) * fr, linha = (peso) => { const o = Math.round(peso * k); return { ouvintes: o, sessoes: Math.round(o * 1.7), horas: Math.round(o * 6.2) / 10 }; };
+    const soma = (l) => l.reduce((a, x) => ({ ouvintes: a.ouvintes + x.ouvintes, sessoes: a.sessoes + x.sessoes, horas: Math.round((a.horas + x.horas) * 10) / 10 }), { ouvintes: 0, sessoes: 0, horas: 0 });
+    const agrupar = (l, chave, base) => { const m = new Map(); l.forEach((c) => { const kk = chave(c); if (!m.has(kk)) m.set(kk, { b: base(c), l: [] }); m.get(kk).l.push(c); }); return [...m.values()].map((g) => Object.assign(g.b, soma(g.l))).sort((a, b) => b.ouvintes - a.ouvintes); };
+    const fo = f.origem ? DEMO_ORIGENS[f.origem] || 0 : 1;
+    const todas = DEMO_CIDADES.map(([cidade, uf, nome, pais, lat, lon, peso]) => Object.assign({ pais, uf, nome, cidade, lat, lon, peso }, linha(peso * fo))).filter((c) => c.ouvintes > 0);
+    const noLocal = todas.filter((c) => (!f.pais || c.pais === f.pais) && (!f.uf || c.uf === f.uf));
+    const pesoLocal = DEMO_CIDADES.filter((c) => (!f.pais || c[3] === f.pais) && (!f.uf || c[1] === f.uf)).reduce((a, c) => a + c[6], 0);
+    const tot = soma(noLocal);
+    return { demo: true, de, ate, radio, origem: f.origem, pais: f.pais, uf: f.uf, total: Object.assign(tot, { sessoesLocalizadas: Math.round(tot.sessoes * 0.94) }),
+      paises: agrupar(todas, (c) => c.pais, (c) => ({ pais: c.pais })), estados: agrupar(noLocal, (c) => c.pais + "|" + c.uf, (c) => ({ pais: c.pais, uf: c.uf, nome: c.nome })),
+      cidades: noLocal.map(({ pais, uf, cidade, lat, lon, ouvintes, sessoes, horas }) => ({ pais, uf, cidade, lat, lon, ouvintes, sessoes, horas })).sort((a, b) => b.ouvintes - a.ouvintes),
+      origens: Object.entries(DEMO_ORIGENS).map(([origem, p]) => Object.assign({ origem }, linha(pesoLocal * p))).filter((o) => o.ouvintes > 0) };
+  }
+  const demoLocais = (ouv) => DEMO_CIDADES.map(([cidade, uf, , pais, lat, lon, peso]) => { const c = Math.round((peso / 857) * ouv * 1.25); return { pais, uf, cidade, lat, lon, conectados: c, ouvintes: Math.round(c * 0.8) }; }).filter((c) => c.conectados > 0);
+
+  async function apiGeo(de, ate, radio, f) {
+    if (PREVIEW || ESTATICO) return demoGeo(de, ate, radio, f);
+    const r = await fetch(API + `audiencia.php?acao=geo&de=${de}&ate=${ate}&radio=${enc(radio)}&origem=${enc(f.origem)}&pais=${enc(f.pais)}&uf=${enc(f.uf)}&t=${Date.now()}`, { headers: authH(), cache: "no-store" });
+    if (r.status === 401) { sessaoExpirou(); throw new Error("Sessão expirada"); }
+    const j = await r.json(); if (!r.ok) throw new Error(j.erro || "Erro ao carregar"); return j;
+  }
+  // "agora": monta o mesmo formato do relatório a partir de quem está conectado
+  function geoDeAgora(locais, f) {
+    const junta = (l, chave, base) => { const m = new Map(); l.forEach((c) => { const k = chave(c); const g = m.get(k) || m.set(k, Object.assign(base(c), { conectados: 0, ouvintes: 0 })).get(k); g.conectados += c.conectados; g.ouvintes += c.ouvintes; }); return [...m.values()].sort((a, b) => b.conectados - a.conectados); };
+    const noLocal = locais.filter((c) => (!f.pais || c.pais === f.pais) && (!f.uf || c.uf === f.uf));
+    return { total: noLocal.reduce((a, c) => ({ conectados: a.conectados + c.conectados, ouvintes: a.ouvintes + c.ouvintes }), { conectados: 0, ouvintes: 0 }),
+      paises: junta(locais, (c) => c.pais, (c) => ({ pais: c.pais })), estados: junta(noLocal.filter((c) => c.uf), (c) => c.pais + "|" + c.uf, (c) => ({ pais: c.pais, uf: c.uf, nome: c.uf })), cidades: noLocal.filter((c) => c.cidade), origens: [] };
+  }
+
+  // zoom e arrasto do mapa (mouse, roda e pinça); a proporção da vista acompanha a caixa na tela
+  function vistaMapa(svg, aoMudar) {
+    let v = { x: -180, y: -150, w: 360, h: 220 }, moveu = false;
+    const caixa = () => { const r = svg.getBoundingClientRect(); return { l: r.left, t: r.top, w: Math.max(1, r.width), h: Math.max(1, r.height) }; };
+    const aplicar = () => { const c = caixa(); v.h = (v.w * c.h) / c.w; svg.setAttribute("viewBox", `${v.x.toFixed(3)} ${v.y.toFixed(3)} ${v.w.toFixed(3)} ${v.h.toFixed(3)}`); aoMudar(v.w / c.w); };
+    const centrar = (cx, cy, w) => { const c = caixa(), wmax = Math.max(MUNDO[2] - MUNDO[0], ((MUNDO[3] - MUNDO[1]) * c.w) / c.h) * 1.04; v.w = Math.max(0.6, Math.min(wmax, w)); v.h = (v.w * c.h) / c.w;
+      v.x = Math.max(MUNDO[0] - v.w * 0.5, Math.min(MUNDO[2] - v.w * 0.5, cx - v.w / 2)); v.y = Math.max(MUNDO[1] - v.h * 0.5, Math.min(MUNDO[3] - v.h * 0.5, cy - v.h / 2)); aplicar(); };
+    const enquadrar = (b, margem = 0.1) => { const c = caixa(), bw = Math.max(b[2] - b[0], 0.8), bh = Math.max(b[3] - b[1], 0.8); centrar((b[0] + b[2]) / 2, (b[1] + b[3]) / 2, Math.max(bw, (bh * c.w) / c.h) * (1 + 2 * margem)); };
+    const zoom = (fator, px, py) => { const c = caixa(), fx = px == null ? 0.5 : (px - c.l) / c.w, fy = py == null ? 0.5 : (py - c.t) / c.h, mx = v.x + fx * v.w, my = v.y + fy * v.h, w = v.w * fator; const h = (w * c.h) / c.w; centrar(mx - fx * w + w / 2, my - fy * h + h / 2, w); };
+    svg.addEventListener("wheel", (e) => { e.preventDefault(); zoom(e.deltaY > 0 ? 1.3 : 1 / 1.3, e.clientX, e.clientY); }, { passive: false });
+    const pts = new Map(); let dist0 = 0;
+    const mover = (e) => {
+      if (!pts.has(e.pointerId)) return; const ant = pts.get(e.pointerId), c = caixa(); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 1) { const dx = e.clientX - ant.x, dy = e.clientY - ant.y; if (Math.abs(e.clientX - ant.x0) + Math.abs(e.clientY - ant.y0) > 6) moveu = true; pts.get(e.pointerId).x0 = ant.x0; pts.get(e.pointerId).y0 = ant.y0; if (moveu) centrar(v.x + v.w / 2 - (dx * v.w) / c.w, v.y + v.h / 2 - (dy * v.h) / c.h, v.w); }
+      else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y); moveu = true; if (dist0 > 0 && d > 0) zoom(dist0 / d, (a.x + b.x) / 2, (a.y + b.y) / 2); dist0 = d; }
+    };
+    const soltar = (e) => { pts.delete(e.pointerId); dist0 = 0; if (!pts.size) { removeEventListener("pointermove", mover); removeEventListener("pointerup", soltar); removeEventListener("pointercancel", soltar); setTimeout(() => (moveu = false), 0); } };
+    svg.addEventListener("pointerdown", (e) => { if (!pts.size) { moveu = false; addEventListener("pointermove", mover); addEventListener("pointerup", soltar); addEventListener("pointercancel", soltar); } pts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY }); dist0 = 0; });
+    svg.addEventListener("click", (e) => { if (moveu) { e.stopPropagation(); e.preventDefault(); } }, true);
+    return { enquadrar, centrar, zoom, redesenhar: aplicar };
+  }
+
+  async function audMapa(alvo) {
+    const hoje = hojeISO(), E = mapaEst;
+    audPeriodo = audPeriodo || { de: hoje, ate: hoje, rotulo: "hoje", radio: "" };
+    const radioSel = audPeriodo.radio || "";
+    const atalho = (r, de, ate) => `<button data-p="${r}" data-de="${de}" data-ate="${ate}" class="${!E.agora && audPeriodo.rotulo === r ? "on" : ""}">${{ hoje: "Hoje", ontem: "Ontem", d7: "7 dias", d30: "30 dias" }[r]}</button>`;
+    alvo.innerHTML = `
+      <div class="rel-ctrl">
+        <div class="seg"><button data-agora class="${E.agora ? "on" : ""}">● Agora</button>${atalho("hoje", hoje, hoje)}${atalho("ontem", somaDias(hoje, -1), somaDias(hoje, -1))}${atalho("d7", somaDias(hoje, -6), hoje)}${atalho("d30", somaDias(hoje, -29), hoje)}</div>
+        ${E.agora ? "" : `<label class="f inline"><span>Rádio</span><select data-radio><option value="">Todas as rádios</option>${(config.radios || []).map((r) => `<option value="${esc(r.id)}" ${radioSel === r.id ? "selected" : ""}>${esc(nomeRadio(r.id))}</option>`).join("")}</select></label>
+        <label class="f inline"><span>Origem</span><select data-origem><option value="">Todas as origens</option>${Object.entries(NOME_ORIGEM).map(([k, n]) => `<option value="${k}" ${E.origem === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+        <label class="f inline"><span>De</span><input type="date" data-de value="${audPeriodo.de}" max="${hoje}"></label>
+        <label class="f inline"><span>Até</span><input type="date" data-ate value="${audPeriodo.ate}" max="${hoje}"></label>`}
+        <span class="grow"></span>
+        <button class="btn ghost sm" data-csv>⬇ CSV</button>
+        <button class="btn primary sm" data-print>🖨 Imprimir / PDF</button>
+      </div>
+      <div data-rel><p class="hint">Carregando mapa…</p></div>`;
+    const recarregar = () => { pararAudiencia(); audMapa(alvo); };
+    $("[data-agora]", alvo).onclick = () => { E.agora = true; recarregar(); };
+    $$("[data-p]", alvo).forEach((b) => (b.onclick = () => { E.agora = false; audPeriodo = { de: b.dataset.de, ate: b.dataset.ate, rotulo: b.dataset.p, radio: radioSel }; recarregar(); }));
+    if (!E.agora) {
+      const mudouData = () => { const de = $("[data-de]", alvo).value, ate = $("[data-ate]", alvo).value; if (de && ate) { audPeriodo = { de: de <= ate ? de : ate, ate: de <= ate ? ate : de, rotulo: "", radio: radioSel }; recarregar(); } };
+      $("[data-radio]", alvo).onchange = (e) => { audPeriodo = Object.assign({}, audPeriodo, { radio: e.target.value }); recarregar(); };
+      $("[data-origem]", alvo).onchange = (e) => { E.origem = e.target.value; recarregar(); };
+      $("[data-de]", alvo).onchange = mudouData; $("[data-ate]", alvo).onchange = mudouData;
+    }
+    const rel = $("[data-rel]", alvo);
+    let base; try { base = await carregarGeo(); } catch (e) { rel.innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
+    const buscar = async () => (E.agora ? geoDeAgora((await apiAud("agora")).locais || [], E) : apiGeo(audPeriodo.de, audPeriodo.ate, radioSel, E));
+    let d; try { d = await buscar(); } catch (e) { rel.innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
+    if (!rel.isConnected) return;
+
+    const M = E.agora ? "conectados" : E.metrica, val = (r) => Number(r[M] || 0), fmt = (v) => (M === "horas" ? n1(v) : n0(v));
+    const umDia = audPeriodo.de === audPeriodo.ate;
+    const periodoTxt = E.agora ? "agora (últimos 2 min)" : (umDia ? fmtDia(audPeriodo.de) : `${fmtDia(audPeriodo.de)} a ${fmtDia(audPeriodo.ate)}`) + (radioSel ? " · " + nomeRadio(radioSel) : " · todas as rádios") + (E.origem ? " · origem: " + NOME_ORIGEM[E.origem] : "");
+    const temEstados = (p) => base.estados.some((s) => s.pais === p);
+    const nomeUF = (p, uf, nome) => { const s = base.estados.find((x) => x.pais === p && x.uf === uf); return (p === "BR" && s && s.nome) || (nome && nome !== uf ? nome : (s && s.nome) || uf); };
+    const localTxt = E.pais ? nomePais(E.pais) + (E.uf ? " › " + (E.ufNome || E.uf) : "") : "Mundo", noLocalTxt = E.pais ? "em " + (E.uf ? E.ufNome || E.uf : nomePais(E.pais)) : "no mundo todo";
+    const cols = E.agora ? [["conectados", "Conectados"], ["ouvintes", "Ouvindo"]] : [["ouvintes", "Ouvintes"], ["sessoes", "Sessões"], ["horas", "Horas"]];
+    const listaPadrao = E.uf ? "cidades" : E.pais ? (d.estados.length ? "estados" : "cidades") : "paises";
+    let lista = E.lista && (E.lista !== "origens" || !E.agora) ? E.lista : listaPadrao;
+    const pctLoc = d.total.sessoes ? Math.round((d.total.sessoesLocalizadas / d.total.sessoes) * 100) : 0;
+    const kpis = E.agora
+      ? [["Conectados localizados", n0(d.total.conectados), localTxt, true], ["Ouvindo agora", n0(d.total.ouvintes), "com a rádio tocando", true], ["Países", n0(d.paises.length), "com alguém conectado"], ["Cidades", n0(d.cidades.length), noLocalTxt]]
+      : [["Ouvintes únicos", n0(d.total.ouvintes), localTxt, true], ["Países", n0(d.paises.length), "com ouvintes no período", true], [E.pais ? "Estados" : "Estados / regiões", n0(d.estados.length), noLocalTxt], ["Cidades", n0(d.cidades.length) + (d.cidades.length >= 500 ? "+" : ""), noLocalTxt], ["Horas ouvidas", n1(d.total.horas), noLocalTxt], ["Sessões localizadas", pctLoc + "%", n0(d.total.sessoesLocalizadas) + " de " + n0(d.total.sessoes)]];
+
+    rel.innerHTML = `
+      <div class="rel">
+        <div class="rel-tit"><h4>Mapa da audiência — ${esc(periodoTxt)}</h4>${d.demo || ((PREVIEW || ESTATICO) && E.agora) ? `<em class="tag">demonstração</em>` : ""}</div>
+        <div class="kpis">${kpis.map(([t, v, s, dest]) => `<div class="kpi ${dest ? "dest" : ""}"><span>${esc(t)}</span><b>${v}</b><small>${esc(s)}</small></div>`).join("")}</div>
+        <div class="mapa-grid">
+          <div class="viz-card mapa-card">
+            <div class="viz-h"><nav class="mapa-trilha"><button data-ir="mundo" ${E.pais ? "" : "disabled"}>🌍 Mundo</button>${E.pais ? `<span>›</span><button data-ir="pais" ${E.uf ? "" : "disabled"}>${esc(nomePais(E.pais))}</button>` : ""}${E.uf ? `<span>›</span><button disabled>${esc(E.ufNome || E.uf)}</button>` : ""}</nav>
+              ${E.agora ? `<small><span class="pulse"></span> <span data-upd>ao vivo · a cada 10 s</span></small>` : `<div class="seg sm">${["ouvintes", "sessoes", "horas"].map((m) => `<button data-m="${m}" class="${M === m ? "on" : ""}">${{ ouvintes: "Ouvintes", sessoes: "Sessões", horas: "Horas" }[m]}</button>`).join("")}</div>`}</div>
+            <div class="mapa-box"><svg class="mapa" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mapa da audiência: ${esc(localTxt)}"><rect class="m-fundo" x="-400" y="-400" width="800" height="800" fill="#f4f7fb"/><g data-c="paises"></g><g data-c="estados"></g><g data-c="bolhas"></g><g data-c="rotulos"></g></svg>
+              <div class="mapa-zoom"><button data-z="in" title="Aproximar" aria-label="Aproximar">+</button><button data-z="out" title="Afastar" aria-label="Afastar">−</button><button data-z="reset" title="Enquadrar" aria-label="Enquadrar">⤢</button></div>
+              <div class="mapa-tip" hidden></div></div>
+            <div class="mapa-leg" data-leg></div>
+          </div>
+          <div class="viz-card mapa-lista">
+            <div class="seg sm" data-abas></div>
+            <div class="mapa-rol" data-rol></div>
+          </div>
+        </div>
+        ${!E.agora && !d.total.sessoesLocalizadas ? `<p class="hint">Ainda não há acessos localizados neste recorte. A localização por IP vale para os acessos feitos a partir desta atualização, com o app no servidor com PHP.</p>` : ""}
+        <p class="hint">A localização vem do IP da conexão: indica a cidade aproximada do provedor de internet (em rede móvel ou VPN pode apontar outra cidade). O IP não é gravado.</p>
+      </div>`;
+
+    const svg = $("svg.mapa", rel), tip = $(".mapa-tip", rel), G = (n) => $(`[data-c="${n}"]`, svg), dicas = new Map();
+    const ir = (pais, uf = "", ufNome = "") => { E.pais = pais; E.uf = uf; E.ufNome = ufNome; E.lista = ""; recarregar(); };
+    let bolhas = [], escalaAtual = 1;
+    const aoMudar = (s) => { escalaAtual = s;
+      $$("circle", G("bolhas")).forEach((c) => c.setAttribute("r", (c.dataset.r * s).toFixed(3)));
+      const postos = [];   // rótulos em ordem de tamanho; o que bater em outro já colocado fica só na dica e na lista
+      $$("text", G("rotulos")).forEach((t) => { const x = Number(t.getAttribute("x")), y = Number(t.dataset.y) - (Number(t.dataset.r) + 4) * s, w = (t.textContent.length * 6.6 + 6) * s, h = 14 * s;
+        t.setAttribute("font-size", (11 * s).toFixed(3)); t.setAttribute("stroke-width", (3 * s).toFixed(3)); t.setAttribute("y", y.toFixed(3));
+        const bate = postos.some((q) => x - w / 2 < q[2] && x + w / 2 > q[0] && y - h < q[3] && y > q[1]);
+        t.style.display = bate ? "none" : ""; if (!bate) postos.push([x - w / 2, y - h, x + w / 2, y]); }); };
+    const vista = vistaMapa(svg, aoMudar);
+
+    function pintar() {
+      dicas.clear();
+      const linhasDica = (r) => cols.map(([k, n]) => `<span>${n}</span><b>${k === "horas" ? n1(r[k]) : n0(r[k])}</b>`).join("");
+      const dica = (k, titulo, r, extra = "") => dicas.set(k, `<strong>${esc(titulo)}</strong>${r ? `<div>${linhasDica(r)}</div>` : `<em>sem acessos${E.agora ? " agora" : " no período"}</em>`}${extra}`);
+      // recorte em cores: países no mundo; estados dentro do país
+      const nivelEstados = E.pais && temEstados(E.pais);
+      const serie = nivelEstados ? d.estados.filter((s) => s.pais === E.pais) : d.paises;
+      const max = Math.max(0, ...serie.map(val)), passo = (v) => (v > 0 && max > 0 ? Math.min(4, Math.max(0, Math.ceil(5 * Math.sqrt(v / max) - 1e-9) - 1)) : -1);
+      const porPais = new Map(d.paises.map((p) => [p.pais, p])), porUF = new Map(d.estados.filter((s) => s.pais === E.pais).map((s) => [s.uf, s]));
+      G("paises").innerHTML = base.paises.map((p) => { const r = porPais.get(p.id), sel = E.pais === p.id; dica("p:" + p.id, nomePais(p.id), r, sel ? "" : `<small>toque para abrir o país</small>`);
+        const cor = E.pais ? (sel ? "#f7f9fc" : SEM_DADO) : r && val(r) > 0 ? AZUIS[passo(val(r))] : SEM_DADO;
+        return `<path d="${p.d}" data-k="p:${p.id}" data-pais="${p.id}" fill="${cor}" stroke="${sel ? "#8a90a0" : "#ffffff"}" stroke-width="${sel ? 1.2 : 0.6}" vector-effect="non-scaling-stroke" class="${sel ? "sel" : ""}"${E.pais && !sel ? ' opacity=".75"' : ""}/>`; }).join("");
+      G("estados").innerHTML = !nivelEstados ? "" : base.estados.filter((s) => s.pais === E.pais).map((s) => { const r = porUF.get(s.uf), sel = E.uf === s.uf; dica("e:" + s.uf, s.nome + " (" + s.uf + ")", r, sel ? "" : `<small>toque para abrir o estado</small>`);
+        const cor = E.uf && !sel ? "#eef1f6" : r && val(r) > 0 ? AZUIS[E.uf ? 0 : passo(val(r))] : "#f7f9fc";
+        return `<path d="${s.d}" data-k="e:${s.uf}" data-uf="${esc(s.uf)}" data-nome="${esc(s.nome)}" fill="${cor}" stroke="${sel ? "#14181f" : "#ffffff"}" stroke-width="${sel ? 1.8 : 0.8}" vector-effect="non-scaling-stroke"/>`; }).join("");
+      // cidades: bolhas com área proporcional
+      bolhas = d.cidades.filter((c) => c.lat != null && c.lon != null && val(c) > 0).sort((a, b) => val(b) - val(a));
+      const bmax = Math.max(1, ...bolhas.map(val));
+      G("bolhas").innerHTML = bolhas.slice().reverse().map((c, i) => { const k = "c:" + i; dica(k, c.cidade + (c.uf && c.uf.length <= 3 ? " – " + c.uf : "") + (E.pais ? "" : ", " + nomePais(c.pais)), c);
+        return `<circle cx="${c.lon}" cy="${mercY(c.lat).toFixed(3)}" data-r="${(3.5 + 18 * Math.sqrt(val(c) / bmax)).toFixed(1)}" r="1" data-k="${k}" data-pais="${c.pais}" data-uf="${esc(c.uf || "")}" fill="${COR_BOLHA}" fill-opacity=".78" stroke="#ffffff" stroke-width="2" vector-effect="non-scaling-stroke"${E.agora ? ' class="vivo"' : ""}/>`; }).join("");
+      G("rotulos").innerHTML = bolhas.slice(0, E.pais ? 14 : 6).map((c) => `<text x="${c.lon}" y="0" data-y="${mercY(c.lat).toFixed(3)}" data-r="${(3.5 + 18 * Math.sqrt(val(c) / bmax)).toFixed(1)}" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="700" fill="#14181f" stroke="#ffffff" stroke-linejoin="round" paint-order="stroke" pointer-events="none">${esc(c.cidade)}</text>`).join("");
+      // legenda
+      const corte = (i) => (i === 4 ? max : max * Math.pow((i + 1) / 5, 2)), inteiro = M !== "horas";   // mesmas faixas usadas para pintar
+      const faixas = max > 0 ? AZUIS.map((c, i) => (inteiro ? { c, de: i ? Math.floor(corte(i - 1)) + 1 : 1, ate: Math.floor(corte(i)) } : { c, de: i ? corte(i - 1) : 0, ate: corte(i) })).filter((f) => (inteiro ? f.ate >= f.de : f.ate > 0)) : [];
+      const semRecorte = !!E.uf || (E.pais && !nivelEstados);   // dentro de um estado (ou país sem divisão no mapa) só as cidades variam
+      $("[data-leg]", rel).innerHTML = (semRecorte ? "" : `<span><b>${nivelEstados ? "Estados" : "Países"}</b> · ${esc(METRICAS[M].toLowerCase())}</span>
+        <span class="lg"><i style="background:${nivelEstados ? "#f7f9fc" : SEM_DADO}"></i>sem acessos</span>${faixas.map((f) => `<span class="lg"><i style="background:${f.c}"></i>${f.de === f.ate ? fmt(f.de) : fmt(f.de) + "–" + fmt(f.ate)}</span>`).join("")}`) + `
+        <span class="lg"><i class="bo" style="background:${COR_BOLHA}"></i>cidades (tamanho = ${esc(METRICAS[M].toLowerCase())})</span>`;
+      // lista ao lado
+      const tabelas = { paises: ["Países", d.paises, (r) => nomePais(r.pais)], estados: ["Estados", d.estados, (r) => nomeUF(r.pais, r.uf, r.nome) + (E.pais ? "" : " · " + r.pais)], cidades: ["Cidades", d.cidades, (r) => r.cidade + (r.uf && r.uf.length <= 3 ? " – " + r.uf : "") + (E.pais ? "" : " · " + r.pais)] };
+      if (!E.agora) tabelas.origens = ["Origem", d.origens, (r) => NOME_ORIGEM[r.origem] || r.origem];
+      $("[data-abas]", rel).innerHTML = Object.entries(tabelas).map(([k, [n, l]]) => `<button data-l="${k}" class="${lista === k ? "on" : ""}">${n} <small>${l.length}</small></button>`).join("");
+      const [, linhas, nome] = tabelas[lista] || tabelas.paises, lmax = Math.max(1, ...linhas.map(val)), soma = linhas.reduce((a, r) => a + val(r), 0);
+      $("[data-rol]", rel).innerHTML = !linhas.length ? `<p class="hint">Sem dados neste recorte.</p>` : `<table><thead><tr><th>${tabelas[lista][0]}</th>${cols.map(([k, n]) => `<th class="${k === M ? "on" : ""}">${n}</th>`).join("")}<th>%</th></tr></thead><tbody>${linhas.slice(0, 200).map((r, i) =>
+        `<tr data-i="${i}" tabindex="0"><td><span class="barra" style="width:${Math.max(2, (val(r) / lmax) * 100).toFixed(1)}%"></span><span class="nm">${esc(nome(r))}</span></td>${cols.map(([k]) => `<td>${k === "horas" ? n1(r[k]) : n0(r[k])}</td>`).join("")}<td>${soma ? Math.round((val(r) / soma) * 100) : 0}%</td></tr>`).join("")}</tbody></table>`;
+      $$("[data-l]", rel).forEach((b) => (b.onclick = () => { lista = E.lista = b.dataset.l; pintar(); vista.redesenhar(); }));
+      $$("[data-rol] tr[data-i]", rel).forEach((tr) => { const r = linhas[tr.dataset.i]; const abrir = () => {
+          if (lista === "paises") ir(r.pais); else if (lista === "estados") ir(r.pais, r.uf, nomeUF(r.pais, r.uf, r.nome));
+          else if (lista === "cidades" && r.lat != null) vista.centrar(r.lon, mercY(r.lat), 4);
+          else if (lista === "origens") { E.origem = E.origem === r.origem ? "" : r.origem; recarregar(); } };
+        tr.onclick = abrir; tr.onkeydown = (e) => { if (e.key === "Enter") abrir(); }; });
+    }
+    function enquadrar() {
+      const pts = bolhas.filter((c) => (!E.pais || c.pais === E.pais)), caixaPts = () => [Math.min(...pts.map((c) => c.lon)) - 0.4, Math.min(...pts.map((c) => mercY(c.lat))) - 0.4, Math.max(...pts.map((c) => c.lon)) + 0.4, Math.max(...pts.map((c) => mercY(c.lat))) + 0.4];
+      if (E.uf) { const s = base.estados.find((x) => x.pais === E.pais && x.uf === E.uf); if (s) return vista.enquadrar(s.caixa, 0.12); if (pts.length) return vista.enquadrar(caixaPts(), 0.35); }
+      if (E.pais) { const p = base.paises.find((x) => x.id === E.pais); if (p) return vista.enquadrar(p.caixa, 0.06); if (pts.length) return vista.enquadrar(caixaPts(), 0.35); }
+      const c = svg.getBoundingClientRect(), topo = mercY(78);   // mundo: ocupa a altura e corta no máximo um pouco do Pacífico
+      vista.centrar(8, (topo + MUNDO[3]) / 2, Math.max((MUNDO[2] - MUNDO[0]) * 0.8, ((MUNDO[3] - topo) * c.width) / Math.max(1, c.height)));
+    }
+    pintar(); enquadrar();
+
+    // interação: dica ao passar, toque abre o recorte
+    const mostrarDica = (e) => { const el = e.target.closest("[data-k]"); if (!el || !dicas.has(el.dataset.k)) { tip.hidden = true; return; }
+      tip.innerHTML = dicas.get(el.dataset.k); tip.hidden = false; const b = $(".mapa-box", rel).getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+      tip.style.left = Math.max(4, Math.min(b.width - tip.offsetWidth - 4, x + 14)) + "px"; tip.style.top = Math.max(4, y - tip.offsetHeight - 12 < 4 ? y + 16 : y - tip.offsetHeight - 12) + "px"; };
+    svg.addEventListener("pointermove", mostrarDica); svg.addEventListener("pointerdown", mostrarDica); svg.addEventListener("pointerleave", () => (tip.hidden = true));
+    svg.addEventListener("click", (e) => { const el = e.target.closest("[data-k]"); if (!el) return; const k = el.dataset.k;
+      if (k[0] === "e") { if (E.uf !== el.dataset.uf) ir(E.pais, el.dataset.uf, el.dataset.nome); }
+      else if (k[0] === "c") { if (!E.pais || E.pais !== el.dataset.pais) ir(el.dataset.pais); else if (el.dataset.uf && E.uf !== el.dataset.uf) ir(E.pais, el.dataset.uf, nomeUF(E.pais, el.dataset.uf, "")); }
+      else if (k[0] === "p" && E.pais !== el.dataset.pais) ir(el.dataset.pais); });
+    $$("[data-z]", rel).forEach((b) => (b.onclick = () => (b.dataset.z === "reset" ? enquadrar() : vista.zoom(b.dataset.z === "in" ? 1 / 1.6 : 1.6))));
+    $$("[data-ir]", rel).forEach((b) => (b.onclick = () => (b.dataset.ir === "mundo" ? ir("") : ir(E.pais))));
+    $$("[data-m]", rel).forEach((b) => (b.onclick = () => { E.metrica = b.dataset.m; recarregar(); }));
+    const aoRedimensionar = () => { if (!svg.isConnected) { removeEventListener("resize", aoRedimensionar); return; } vista.redesenhar(); };
+    addEventListener("resize", aoRedimensionar);
+    if (E.agora) audTimer = setInterval(async () => { if (!svg.isConnected) return; try { d = await buscar(); pintar(); vista.redesenhar(); const u = $("[data-upd]", rel); if (u) u.textContent = "atualizado às " + new Date().toLocaleTimeString("pt-BR") + " · a cada 10 s"; } catch (e) {} }, 10000);
+
+    // exportação: as quatro tabelas do recorte
+    const blocos = () => [["Países", d.paises, (r) => [nomePais(r.pais), r.pais]], ["Estados", d.estados, (r) => [nomeUF(r.pais, r.uf, r.nome), r.pais]], ["Cidades", d.cidades, (r) => [r.cidade, [r.uf, r.pais].filter(Boolean).join(" / ")]], ...(E.agora ? [] : [["Origem do acesso", d.origens, (r) => [NOME_ORIGEM[r.origem] || r.origem, ""]]])]
+      .map(([t, l, f]) => ({ titulo: t, cab: [t, t === "Países" ? "Código" : t === "Estados" ? "País" : t === "Cidades" ? "Estado / país" : "", ...cols.map(([, n]) => n)], linhas: l.map((r) => [...f(r), ...cols.map(([k]) => r[k])]) }));
+    $("[data-csv]", alvo).onclick = () => {
+      const csv = [["Mapa da audiência", periodoTxt], ["Recorte", localTxt], [], ["Indicador", "Valor"], ...kpis.map(([t, v]) => [t, v]), ...blocos().flatMap((b) => [[], b.cab, ...b.linhas])]
+        .map((l) => l.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+      a.download = `audiencia_mapa_${(E.pais || "mundo").toLowerCase()}${E.uf ? "_" + E.uf.toLowerCase().replace(/[^a-z0-9]+/g, "-") : ""}_${E.agora ? "agora" : audPeriodo.de + (umDia ? "" : "_a_" + audPeriodo.ate)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+      if (PREVIEW) toast("Na prévia o download é bloqueado; no app publicado o CSV é baixado.");
+    };
+    $("[data-print]", alvo).onclick = () => {
+      const copia = svg.cloneNode(true); copia.removeAttribute("class"); copia.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      imprimirRelatorio({ demo: d.demo }, periodoTxt + " · " + localTxt, kpis, null, null,
+        { titulo: "Mapa da audiência", mapa: copia.outerHTML + `<div class="mapa-leg">${$("[data-leg]", rel).innerHTML}</div>`, tabelas: blocos().map((b) => Object.assign(b, { linhas: b.linhas.slice(0, 40) })) });
+    };
   }
 
   // ----- aba Usuários (só administradores) -----
@@ -1965,17 +2253,36 @@
 
   // ---------- medição de audiência (anônima) ----------
   // Um código aleatório por aparelho (sem nome, e-mail ou IP). Sinal a cada 30 s e ao tocar/pausar/fechar.
+  // O servidor usa o IP da conexão só para descobrir país/estado/cidade e não o grava (api/geo.php).
   const novoId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 32);
   let DID = lsGet("radioapp.did"); if (!/^[a-z0-9]{8,40}$/.test(DID || "")) { DID = novoId(); lsSet("radioapp.did", DID); }
   const SID = novoId();
   const UA = navigator.userAgent;
   const PLATAFORMA = /iphone|ipad|ipod/i.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iphone" : /android/i.test(UA) ? "android" : /windows|macintosh|linux|cros/i.test(UA) ? "computador" : "outro";
   const NO_APP = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  // por onde o ouvinte chegou: link marcado (?o=instagram ou utm_source), navegador interno da rede social, site de origem ou app instalado
+  const ORIGEM = (() => {
+    try {
+      const regras = [["instagram", /instagram|^ig$/], ["facebook", /facebook|^fb$|fb\.com|fb\.me|messenger/], ["whatsapp", /whatsapp|wa\.me|^wa$|^zap$/], ["youtube", /youtube|youtu\.be|^yt$/], ["tiktok", /tiktok/], ["x", /twitter|^x$|^t\.co$|^x\.com$/], ["telegram", /telegram|^t\.me$/], ["busca", /google|bing\.|duckduckgo|yahoo/], ["site", /francesfm|francesnews|^site$/], ["tv", /^tv$/], ["app", /^app$/]];
+      const achar = (t) => { const r = t && regras.find(([, re]) => re.test(t)); return r ? r[0] : ""; };
+      const q = new URLSearchParams(location.search), marca = achar((q.get("o") || q.get("utm_source") || "").toLowerCase().trim());
+      if (marca) return marca;
+      if (/tv\.html$/i.test(location.pathname) || /tizen|web0s|webos|smart-?tv|googletv|android tv|bravia|hbbtv/i.test(UA)) return "tv";
+      if (/Instagram/i.test(UA)) return "instagram";
+      if (/FBAN|FBAV|FB_IAB/i.test(UA)) return "facebook";
+      if (/TikTok|musical_ly|Bytedance/i.test(UA)) return "tiktok";
+      if (NO_APP) return "app";
+      if (!document.referrer) return "direto";
+      const ref = new URL(document.referrer), pasta = location.pathname.replace(/[^/]*$/, "");
+      if (ref.origin === location.origin) return pasta !== "/" && !ref.pathname.startsWith(pasta) ? "site" : "direto";
+      return achar(ref.hostname.toLowerCase()) || "outro";
+    } catch (e) { return "direto"; }
+  })();
   let ultimoSinal = "";
   function sinal(fim) {
     if (PREVIEW || ESTATICO || !config || config.site.medicao === false) return;
     const tocando = document.body.dataset.player === "playing";
-    const d = JSON.stringify({ did: DID, sid: SID, radio: atual ? atual.id : "", tocando, plataforma: PLATAFORMA, app: NO_APP, fim: !!fim });
+    const d = JSON.stringify({ did: DID, sid: SID, radio: atual ? atual.id : "", tocando, plataforma: PLATAFORMA, app: NO_APP, origem: ORIGEM, fim: !!fim });
     try {
       if (fim && navigator.sendBeacon) { navigator.sendBeacon(API + "audiencia.php", new Blob([d], { type: "application/json" })); return; }
       fetch(API + "audiencia.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: d, keepalive: true }).catch(() => {});

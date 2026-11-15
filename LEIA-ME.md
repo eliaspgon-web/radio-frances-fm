@@ -8,7 +8,8 @@ App web instalável (PWA) para iPhone e Android, com o visual do francesfm.com.b
 - **Notícias** — carrossel com as **5 últimas do Francês News** (RSS `https://francesnews.com.br/feed`), atualizado a cada 10 min. A capa de cada matéria é importada para o servidor (`uploads/noticias/`). Também aceita Instagram, outros RSS ou os dois juntos (painel → Notícias).
 - **WhatsApp** — Peça sua música, Mande seu alô, Comercial, Promocional e Jornalismo.
 - **Painel gerencial** (⚙ no topo ou no menu ☰) — rádios/streams/logos, notícias e Instagram, WhatsApp, cores/paletas, fundo.
-- **📊 Audiência** — no painel: conectados e ouvintes **ao vivo** (atualiza a cada 10 s), pico simultâneo, ouvintes únicos, horas ouvidas, tempo médio, rádio e aparelho; relatórios por dia, 7 e 30 dias ou datas livres, **de todas as rádios ou de cada rádio separada**, com gráficos; **imprimir / salvar em PDF** e **CSV**. Medição anônima (código aleatório por aparelho, sem IP ou dado pessoal). Requer o app no servidor com PHP.
+- **📊 Audiência** — no painel: conectados e ouvintes **ao vivo** (atualiza a cada 10 s), pico simultâneo, ouvintes únicos, horas ouvidas, tempo médio, rádio e aparelho; relatórios por dia, 7 e 30 dias ou datas livres, **de todas as rádios ou de cada rádio separada**, com gráficos; **imprimir / salvar em PDF** e **CSV**. Medição anônima (código aleatório por aparelho, sem dado pessoal; o IP não é gravado). Requer o app no servidor com PHP.
+- **🗺 Mapa da audiência** — no painel, em Audiência › Mapa: país, estado e cidade dos ouvintes (pelo IP) e origem do acesso (Instagram, WhatsApp, site, app instalado…). Veja a seção **Mapa da audiência** abaixo.
 - **Usuários e senhas** — login por usuário; níveis **Administrador** (tudo, inclusive usuários e Instagram) e **Editor** (conteúdo); cada um troca a própria senha; bloqueio de 15 min após 5 tentativas erradas; sessão de 12 h.
 
 ## Arquivos
@@ -97,3 +98,20 @@ Também dá para duplicar um programa ou copiá-lo para outra rádio.
 No horário do programa, o "Tocando agora" (e a tela de bloqueio do celular) mostra a imagem, o nome e a descrição do programa sempre que a rádio não estiver mandando o nome de uma música. Para o programa aparecer mesmo durante as músicas, marque **Mostrar o programa mesmo se a rádio mandar nome de música**. Quando dois programas coincidem, vale o mais curto (ex.: um boletim dentro de um programa longo).
 
 O RDS também ignora textos que não são música, como o nome da rádio, vinhetas, comerciais e hora certa.
+
+## Mapa da audiência (geolocalização pelo IP)
+No painel, **📊 Audiência › 🗺 Mapa** mostra de onde o app é ouvido, no mundo todo:
+- **Mapa com destaque em cores**: países no mapa-múndi; ao tocar num país, o recorte passa para os **estados** (Brasil, EUA, Canadá, Austrália, China, Índia, Indonésia, Rússia e África do Sul têm o desenho dos estados); ao tocar num estado, aparecem as **cidades** em bolhas proporcionais. Nos demais países as cidades aparecem direto sobre o país.
+- **Ferramentas**: zoom (botões, roda do mouse, pinça no celular), arrastar, enquadrar, trilha Mundo › País › Estado, dica ao passar o dedo/mouse, listas de Países / Estados / Cidades / Origem (tocar numa linha abre o recorte), troca de métrica (ouvintes, sessões, horas).
+- **Filtros**: período (hoje, ontem, 7 e 30 dias ou datas livres), rádio, origem do acesso e **● Agora** (quem está conectado neste momento, atualizado a cada 10 s).
+- **Relatórios**: o mapa tem **CSV** e **Imprimir / PDF** próprios, e o relatório de audiência que já existia ganhou os gráficos e as tabelas de estado, cidade, país e origem.
+
+**Origem do acesso** — o app reconhece sozinho o navegador interno do Instagram, Facebook e TikTok, o site de onde a pessoa veio e o app instalado. Para as outras redes, divulgue o link com a marca: `https://francesfm.com.br/app/?o=whatsapp` (aceita `instagram`, `facebook`, `whatsapp`, `youtube`, `tiktok`, `x`, `telegram`, `site`; `utm_source=` também vale).
+
+**Como funciona** (`api/geo.php`) — na primeira abertura de cada sessão, o servidor consulta o IP em um serviço de geolocalização (ipwho.is, grátis até 1.000 consultas/dia; geojs.io como reserva), guarda **só** país, estado, cidade e a coordenada da cidade e descarta o IP. O resultado fica em cache por 30 dias por meio de um código embaralhado do IP, então um mesmo aparelho quase nunca gera nova consulta.
+- Precisa do servidor com PHP e saída HTTPS liberada (cURL). Não há nada para instalar: o banco se atualiza sozinho e o desenho do mapa está em `assets/geo/` (Natural Earth, domínio público).
+- A localização é **aproximada**: é a cidade do provedor de internet; em 4G/5G e VPN pode apontar outra cidade. Acessos anteriores a esta atualização aparecem como "não localizados".
+- Mais de ~1.000 IPs novos por dia: contrate o plano do ipwhois.io e grave a chave em `data/segredos.php` (`'geoChave' => '...'`).
+- Site atrás do Cloudflare ou de outro proxy: mude `GEO_CONFIAR_PROXY` para `true` em `api/geo.php`.
+- Para desligar: em `data/config.json`, dentro de `"site"`, coloque `"geo": false`.
+- **LGPD**: como o IP é enviado a um serviço externo para a consulta, inclua na política de privacidade do site que o app usa o IP para estimar a cidade do ouvinte, sem guardá-lo.

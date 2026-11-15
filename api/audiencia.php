@@ -1,9 +1,12 @@
 <?php
 // Medição de audiência do app (anônima: código aleatório por aparelho; nenhum IP ou dado pessoal é gravado).
-//  POST (público)            -> sinal do app a cada 30 s: { did, sid, radio, tocando, plataforma, app, fim }
+// Geografia: o IP é usado só para descobrir país/estado/cidade (api/geo.php) e é descartado em seguida.
+//  POST (público)            -> sinal do app a cada 30 s: { did, sid, radio, tocando, plataforma, app, origem, fim }
 //  GET ?acao=agora           -> conectados/ouvindo agora + últimos 60 min        (painel: login)
 //  GET ?acao=relatorio&de=AAAA-MM-DD&ate=AAAA-MM-DD -> relatório do período    (painel: login)
+//  GET ?acao=geo&de=&ate=&radio=&origem=&pais=&uf=  -> mapa: países, estados, cidades e origens (painel: login)
 require __DIR__ . '/_lib.php';
+require __DIR__ . '/geo.php';
 const ONLINE_SEG = 120;   // considerado conectado se mandou sinal nos últimos 2 min
 
 function db(): PDO {
@@ -18,7 +21,15 @@ function db(): PDO {
       CREATE TABLE IF NOT EXISTS ouvido (dia TEXT, radio TEXT, segundos INT, PRIMARY KEY (dia, radio));
       CREATE TABLE IF NOT EXISTS sessao_radio (sid TEXT, radio TEXT, did TEXT, dia TEXT, ouviu INT DEFAULT 0, PRIMARY KEY (sid, radio));
       CREATE INDEX IF NOT EXISTS ix_sr ON sessao_radio(radio, dia);
-      CREATE TABLE IF NOT EXISTS banner_ev (dia TEXT, banner TEXT, exibicoes INT DEFAULT 0, cliques INT DEFAULT 0, PRIMARY KEY (dia, banner));');
+      CREATE TABLE IF NOT EXISTS banner_ev (dia TEXT, banner TEXT, exibicoes INT DEFAULT 0, cliques INT DEFAULT 0, PRIMARY KEY (dia, banner));
+      CREATE TABLE IF NOT EXISTS geo_cache (h TEXT PRIMARY KEY, pais TEXT, uf TEXT, regiao TEXT, cidade TEXT, lat REAL, lon REAL, t INT);
+      CREATE TABLE IF NOT EXISTS geo_uso (dia TEXT PRIMARY KEY, n INT);');
+    if ((int)$pdo->query('PRAGMA user_version')->fetchColumn() < 1) {   // atualização: colunas de geografia e origem nas sessões
+        $tem = array_column($pdo->query('PRAGMA table_info(sessoes)')->fetchAll(), 'name');
+        foreach (['pais TEXT', 'uf TEXT', 'regiao TEXT', 'cidade TEXT', 'lat REAL', 'lon REAL', 'origem TEXT'] as $c)
+            if (!in_array(explode(' ', $c)[0], $tem, true)) $pdo->exec("ALTER TABLE sessoes ADD COLUMN $c");
+        $pdo->exec('CREATE INDEX IF NOT EXISTS ix_s_geo ON sessoes(dia, pais); PRAGMA user_version = 1;');
+    }
     return $pdo;
 }
 function agoraContagem(PDO $db, int $t): array {
@@ -55,6 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $toca = !empty($b['tocando']) ? 1 : 0; $app = !empty($b['app']) ? 1 : 0;
     $t = time(); $dia = date('Y-m-d', $t);
     $db = db();
+    $novo = $db->prepare('SELECT 1 FROM sessoes WHERE sid = ?'); $novo->execute([$sid]);
+    $geo = null; $origem = geoOrigem($b['origem'] ?? '');
+    if (!$novo->fetchColumn()) { try { $geo = geoLocalizar($db); } catch (Throwable $e) { $geo = null; } }   // sessão nova: localiza pelo IP (fora da transação)
     $db->beginTransaction();
     $s = $db->prepare('SELECT visto, tocando, radio FROM sessoes WHERE sid = ?'); $s->execute([$sid]); $ant = $s->fetch();
     if ($ant && $t - (int)$ant['visto'] < 8 && empty($b['fim'])) { $db->commit(); responder(['ok' => true]); }   // sinais repetidos
@@ -67,7 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($toca) $db->prepare('INSERT OR IGNORE INTO sessao_radio (sid, radio, did, dia, ouviu) VALUES (?,?,?,?,0)')->execute([$sid, $radio, $did, $dia]);   // conta o ouvinte em cada rádio que ouviu
     $visto = !empty($b['fim']) ? $t - ONLINE_SEG - 1 : $t;          // ao fechar o app sai na hora da lista de conectados
     if ($ant) $db->prepare('UPDATE sessoes SET radio=?, tocando=?, plataforma=?, app=?, visto=? WHERE sid=?')->execute([$radio, $toca, $plat, $app, $visto, $sid]);
-    else $db->prepare('INSERT INTO sessoes (sid, did, dia, radio, tocando, plataforma, app, inicio, visto) VALUES (?,?,?,?,?,?,?,?,?)')->execute([$sid, $did, $dia, $radio, $toca, $plat, $app, $t, $visto]);
+    else $db->prepare('INSERT INTO sessoes (sid, did, dia, radio, tocando, plataforma, app, inicio, visto, pais, uf, regiao, cidade, lat, lon, origem) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+            ->execute([$sid, $did, $dia, $radio, $toca, $plat, $app, $t, $visto, $geo['pais'] ?? null, $geo['uf'] ?? null, $geo['regiao'] ?? null, $geo['cidade'] ?? null, $geo['lat'] ?? null, $geo['lon'] ?? null, $origem]);
     $min = intdiv($t, 60);                                            // simultâneos: guarda o MÁXIMO de cada minuto
     $c = agoraContagem($db, $t);
     $db->prepare('INSERT INTO minutos VALUES (?,?,?,?,?) ON CONFLICT(minuto) DO UPDATE SET
@@ -100,15 +115,24 @@ if ($acao === 'agora') {
     $serie = [];
     for ($m = intdiv($t, 60) - 59; $m <= intdiv($t, 60); $m++) $serie[] = ['hora' => date('H:i', $m * 60), 'ouvintes' => (int)($porMin[$m]['ouvintes'] ?? 0), 'conectados' => (int)($porMin[$m]['conectados'] ?? 0)];
     $c['ultimos60'] = $serie; $c['atualizado'] = date('c', $t);
+    $c['locais'] = geoAgora($db, $t - ONLINE_SEG);
     responder($c);
 }
 
-if ($acao === 'relatorio') {
+if ($acao === 'relatorio' || $acao === 'geo') {
     $hoje = date('Y-m-d');
     $de = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['de'] ?? '') ? $_GET['de'] : $hoje;
     $ate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['ate'] ?? '') ? $_GET['ate'] : $de;
     if ($ate < $de) [$de, $ate] = [$ate, $de];
     $radio = preg_replace('/[^a-z0-9_-]/i', '', (string)($_GET['radio'] ?? ''));   // vazio = todas as rádios
+}
+if ($acao === 'geo') {
+    $origem = in_array($_GET['origem'] ?? '', ORIGENS, true) ? $_GET['origem'] : '';
+    $pais = preg_match('/^[A-Za-z]{2}$/', $_GET['pais'] ?? '') ? strtoupper($_GET['pais']) : '';
+    $uf = $pais !== '' ? geoTexto($_GET['uf'] ?? '') : '';
+    responder(geoRelatorio($db, $de, $ate, $radio, $origem, $pais, $uf));
+}
+if ($acao === 'relatorio') {
     $um = function ($sql, $p) use ($db) { $q = $db->prepare($sql); $q->execute($p); return $q->fetch() ?: []; };
     $todos = function ($sql, $p) use ($db) { $q = $db->prepare($sql); $q->execute($p); return $q->fetchAll(); };
     // simultâneos: total ou só da rádio escolhida (guardado por minuto em por_radio)
@@ -141,6 +165,8 @@ if ($acao === 'relatorio') {
         'porRadio' => array_map(fn($r) => ['radio' => $r['radio'], 'horas' => round($r['segundos'] / 3600, 2)], $porRadio),
         'porPlataforma' => array_map(fn($r) => ['plataforma' => $r['plataforma'], 'aparelhos' => (int)$r['aparelhos']], $porPlat),
         'picoPorHora' => $porHora];
+    $g = geoRelatorio($db, $de, $ate, $radio, '', '', '', 15);                   // resumo geográfico e de origem dentro do relatório
+    $out['geo'] = ['total' => $g['total'], 'paises' => array_slice($g['paises'], 0, 15), 'estados' => $g['estados'], 'cidades' => $g['cidades'], 'origens' => $g['origens']];
     if ($de === $ate) {   // um dia: simultâneos a cada 5 min
         $mins = []; foreach ($todos("SELECT minuto, $col v FROM minutos WHERE dia = ?", [$de]) as $r) $mins[(int)$r['minuto']] = (int)$r['v'];
         $ini = intdiv(strtotime($de . ' 00:00:00'), 60); $serie = [];
