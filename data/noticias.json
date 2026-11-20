@@ -1,6 +1,14 @@
 {
- "atualizado": "2026-11-20T01:46:27+0000",
+ "atualizado": "2026-11-20T02:50:42+0000",
  "itens": [
+  {
+   "titulo": "PSD recorre ao STF e pede suspensão de resultado para realizar 2º turno no Rio",
+   "resumo": "Partido de Eduardo Paes contesta exclusão dos votos de Garotinho, que levou à vitória de Douglas Ruas no primeiro turno",
+   "link": "https://francesnews.com.br/post/2026/11/19/46718-psd-recorre-ao-stf-e-pede-suspensao-de-resultado-para-realizar-2o-turno-no-rio",
+   "data": "2026-11-19T23:00:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/d139ce2cf43e66854149.jpg"
+  },
   {
    "titulo": "Bruno Mars anuncia morte do pai e relembra último abraço: “Me ensinou tudo o que sei”",
    "resumo": "Cantor homenageou Peter Hernandez com fotos de família e destacou a influência dele em sua formação musical",
@@ -32,14 +40,6 @@
    "data": "2026-11-19T21:40:00-03:00",
    "fonte": "Francês News",
    "imagem": "assets/noticias/dfb8d518e60a2f9fab06.jpg"
-  },
-  {
-   "titulo": "STF julga em 4 de dezembro Lei da Dosimetria, que pode beneficiar Bolsonaro",
-   "resumo": "Plenário virtual analisará quatro ações contra a norma que altera o cálculo das penas de condenados pelos atos de 8 de janeiro",
-   "link": "https://francesnews.com.br/post/2026/11/19/46714-stf-julga-em-4-de-dezembro-lei-da-dosimetria-que-pode-beneficiar-bolsonaro",
-   "data": "2026-11-19T21:20:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/e108338e1cbdd72c592f.jpg"
   }
  ]
 }
