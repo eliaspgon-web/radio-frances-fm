@@ -1,6 +1,30 @@
 {
- "atualizado": "2026-11-23T22:51:38+0000",
+ "atualizado": "2026-11-23T23:49:20+0000",
  "itens": [
+  {
+   "titulo": "Falha elétrica paralisa sistema de água e pode afetar seis bairros de Maceió",
+   "resumo": "Sistema Aviação está sem operar desde a tarde desta segunda-feira (23); reparo está previsto para começar à noite",
+   "link": "https://francesnews.com.br/post/2026/11/23/47060-falha-eletrica-paralisa-sistema-de-agua-e-pode-afetar-seis-bairros-de-maceio",
+   "data": "2026-11-23T20:40:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/217bf1c126d2bfa1a3e2.jpg"
+  },
+  {
+   "titulo": "Médica alagoana morta em acidente com quatro vítimas em PE é sepultada em Maceió",
+   "resumo": "Beatriz Acioli foi enterrada no Parque das Flores; David do Nascimento Melo, também alagoano, foi sepultado em Atalaia",
+   "link": "https://francesnews.com.br/post/2026/11/23/47058-medica-alagoana-morta-em-acidente-com-quatro-vitimas-em-pe-e-sepultada-em-maceio",
+   "data": "2026-11-23T20:20:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/b4e75fabed873b66fdd1.jpg"
+  },
+  {
+   "titulo": "Duas empresas são multadas por cobrança irregular de passagens em Pernambuco",
+   "resumo": "Irregularidades foram identificadas em linhas que ligam Recife a Limoeiro e Vitória de Santo Antão; fiscalização também passou por Caruaru",
+   "link": "https://francesnews.com.br/post/2026/11/23/47054-duas-empresas-sao-multadas-por-cobranca-irregular-de-passagens-em-pernambuco",
+   "data": "2026-11-23T20:00:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/bb150d930586d865982c.jpg"
+  },
   {
    "titulo": "Acidentes deixam oito mortos e 46 feridos nas rodovias federais de Pernambuco durante feriadão",
    "resumo": "Balanço da PRF reúne ocorrências entre 19 e 22 de novembro; em Ipojuca, colisão de carro contra árvore matou quatro jovens e deixou uma mulher com múltiplas fraturas",
@@ -16,30 +40,6 @@
    "data": "2026-11-23T19:40:00-03:00",
    "fonte": "Francês News",
    "imagem": "assets/noticias/d55bead3258360d5e9da.jpg"
-  },
-  {
-   "titulo": "Quadro da única sobrevivente de acidente em Pernambuco é estável, afirmam familiares",
-   "resumo": "Alagoana Natália Recco, de 29 anos, sofreu múltiplas fraturas e deverá passar por cirurgias; colisão matou quatro pessoas",
-   "link": "https://francesnews.com.br/post/2026/11/23/47064-quadro-da-unica-sobrevivente-de-acidente-em-pernambuco-e-estavel-afirmam-familiares",
-   "data": "2026-11-23T19:38:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/99572e5556c6305035d2.jpg"
-  },
-  {
-   "titulo": "Militares criticam projeto que muda regras da reserva e pode travar promoções em Alagoas",
-   "resumo": "Entidades criticam mudanças nas regras de transferência para a reserva e defendem rejeição da proposta na Assembleia",
-   "link": "https://francesnews.com.br/post/2026/11/23/47063-militares-criticam-projeto-que-muda-regras-da-reserva-e-pode-travar-promocoes-em-alagoas",
-   "data": "2026-11-23T19:34:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/42e46b4d2bb04bde0b0f.jpg"
-  },
-  {
-   "titulo": "Inmet coloca 24 municípios de Alagoas em alerta para baixa umidade do ar até quarta-feira (25)",
-   "resumo": "Instituto recomenda hidratação e evitar atividades físicas nos horários mais secos",
-   "link": "https://francesnews.com.br/post/2026/11/23/47050-inmet-coloca-24-municipios-de-alagoas-em-alerta-para-baixa-umidade-do-ar-ate-quarta-feira-25",
-   "data": "2026-11-23T19:30:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/af1b0c1c4e0c6599c4fa.jpg"
   }
  ]
 }
