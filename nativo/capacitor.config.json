@@ -1,0 +1,12 @@
+{
+  "appId": "br.com.francesfm.radio",
+  "appName": "Francês FM",
+  "webDir": "www",
+  "server": {
+    "url": "https://eliaspgon-web.github.io/radio-frances-fm/",
+    "errorPath": "erro.html"
+  },
+  "backgroundColor": "#0b0b0f",
+  "android": { "backgroundColor": "#0b0b0f", "allowMixedContent": false },
+  "ios": { "backgroundColor": "#0b0b0f", "contentInset": "never", "limitsNavigationsToAppBoundDomains": false }
+}

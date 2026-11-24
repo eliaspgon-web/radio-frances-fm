@@ -161,8 +161,14 @@
     $$(".station").forEach((b) => b.classList.toggle("active", !!r && b.dataset.id === r.id));
   }
 
+  // App das lojas (Capacitor): controles nativos na tela de bloqueio/notificação e áudio em segundo plano
+  const NATIVO = !!(window.Capacitor && typeof Capacitor.isNativePlatform === "function" && Capacitor.isNativePlatform());
+  const MS_NATIVO = NATIVO ? (Capacitor.registerPlugin ? Capacitor.registerPlugin("MediaSession") : (Capacitor.Plugins || {}).MediaSession) : null;
+  if (NATIVO) document.documentElement.classList.add("app-nativo");
+  const nativo = (metodo, ...args) => { try { const r = MS_NATIVO && MS_NATIVO[metodo] && MS_NATIVO[metodo](...args); if (r && r.catch) r.catch(() => {}); } catch (e) {} };
   function setEstado(estado, texto) {
     document.body.dataset.player = estado; // idle | loading | playing | paused | error
+    if (MS_NATIVO) nativo("setPlaybackState", { playbackState: estado === "playing" || estado === "loading" ? "playing" : estado === "paused" ? "paused" : "none" });
     $$("[data-np=status]").forEach((el) => (el.textContent = texto));
     $$("[data-np=play]").forEach((b) => b.setAttribute("aria-label", estado === "playing" || estado === "loading" ? "Pausar" : "Tocar"));
   }
@@ -295,6 +301,15 @@
       navigator.mediaSession.setActionHandler("nexttrack", () => pular(1));
       navigator.mediaSession.setActionHandler("previoustrack", () => pular(-1));
     } catch (e) {}
+    if (MS_NATIVO && !mediaSession.ligado) {
+      mediaSession.ligado = true;
+      nativo("setActionHandler", { action: "play" }, () => tocar());
+      nativo("setActionHandler", { action: "pause" }, () => pausar());
+      nativo("setActionHandler", { action: "stop" }, () => pausar());
+      nativo("setActionHandler", { action: "nexttrack" }, () => pular(1));
+      nativo("setActionHandler", { action: "previoustrack" }, () => pular(-1));
+    }
+    if (MS_NATIVO) nativo("setMetadata", { title: atual.nome, artist: atual.frequencia || "", album: config.site.nome || "", artwork: [{ src: new URL("assets/icons/icon-512.png", location.href).href, sizes: "512x512", type: "image/png" }] });
   }
   function pular(d) {
     const l = radiosAtivas(); if (!l.length) return;
@@ -476,8 +491,11 @@
       e.classList.toggle("on", !!m); e.classList.toggle("bola", !!m && !temCapa);
     });
     document.body.classList.toggle("has-song", !!texto);
-    if (chave !== npChave && "mediaSession" in navigator && r) {   // tela de bloqueio / central de controle
+    if (chave !== npChave && ("mediaSession" in navigator || MS_NATIVO) && r) {   // tela de bloqueio / central de controle
       npChave = chave;
+      if (MS_NATIVO) nativo("setMetadata", { title: m ? m.titulo : r.nome, artist: m ? m.artista || r.nome : (r.frequencia || ""), album: r.nome,
+        artwork: [{ src: m && m.capa ? new URL(m.capa, location.href).href : new URL("assets/icons/icon-512.png", location.href).href, sizes: "512x512", type: m && m.capa ? "image/jpeg" : "image/png" }] });
+      if (!("mediaSession" in navigator)) return;
       try {
         navigator.mediaSession.metadata = new MediaMetadata({ title: m ? m.titulo : r.nome, artist: m ? m.artista || r.nome : (r.frequencia || ""), album: r.nome,
           artwork: m && m.capa ? [{ src: new URL(m.capa, location.href).href, sizes: "512x512" }] : [{ src: new URL("assets/icons/icon-512.png", location.href).href, sizes: "512x512", type: "image/png" }] });
@@ -2490,7 +2508,7 @@
     checarAoVivo();
     if (!PREVIEW && idCanalYT()) setTimeout(() => carregarYT().catch(() => {}), 1500);   // deixa o player do YouTube pronto para o VEJA abrir na hora
     iniciarMedicao();
-    if (!PREVIEW && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+    if (!PREVIEW && !NATIVO && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
     if (location.hash === "#admin" || window.RADIO_ABRIR_ADMIN) { document.body.classList.add("modo-adm"); abrirAdmin(); }
   }
   document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", iniciar) : iniciar();
