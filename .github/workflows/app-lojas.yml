@@ -1,0 +1,71 @@
+# Gera os arquivos do app para as lojas a partir da pasta nativo/ (Capacitor).
+# Android: .aab (Google Play, sem assinatura — assinar com a chave de envio) e .apk de teste.
+# iOS: compila o projeto Xcode para conferir que está tudo certo (o envio à App Store é feito pelo Xcode, com a conta da Apple).
+name: App das lojas
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, app-lojas]
+    paths: ["nativo/**", ".github/workflows/app-lojas.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: app-lojas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: nativo } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm ci
+      - run: npx cap sync android
+      - name: Gerar .aab (Google Play) e .apk de teste
+        working-directory: nativo/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon bundleRelease assembleDebug
+          mkdir -p ../../saida
+          cp app/build/outputs/bundle/release/app-release.aab ../../saida/frances-fm-sem-assinatura.aab
+          cp app/build/outputs/apk/debug/app-debug.apk ../../saida/frances-fm-teste.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: saida/
+          retention-days: 30
+      - name: Guardar os arquivos no ramo builds-android
+        working-directory: saida
+        run: |
+          git init -q -b builds-android
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf "Arquivos gerados automaticamente a partir de %s (%s).\n\n- frances-fm-sem-assinatura.aab: assinar com a chave de envio antes de mandar ao Google Play\n- frances-fm-teste.apk: instalar direto no celular Android para testar\n" "${GITHUB_SHA::7}" "$(date -u +%Y-%m-%d)" > LEIA-ME.md
+          git add -A && git commit -qm "Build Android ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" builds-android
+
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults: { run: { working-directory: nativo } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Xcode mais recente
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)" && xcodebuild -version
+      - run: npm ci
+      - run: npx cap sync ios
+      - name: Compilar (simulador, sem assinatura) para conferir o projeto
+        working-directory: nativo/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -20

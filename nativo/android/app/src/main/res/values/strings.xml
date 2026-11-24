@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Francês FM</string>
+    <string name="title_activity_main">Francês FM</string>
+    <string name="package_name">br.com.francesfm.radio</string>
+    <string name="custom_url_scheme">br.com.francesfm.radio</string>
+</resources>

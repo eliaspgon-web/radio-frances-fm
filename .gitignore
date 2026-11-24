@@ -11,3 +11,9 @@ data/sessoes.php
 data/tentativas.json
 __pycache__/
 data/audiencia.sqlite*
+
+# app das lojas (Capacitor)
+nativo/node_modules/
+nativo/android/keystore.properties
+*.jks
+*.keystore
