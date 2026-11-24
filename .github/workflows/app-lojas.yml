@@ -53,7 +53,7 @@ jobs:
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" builds-android
 
   ios:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 40
     defaults: { run: { working-directory: nativo } }
     steps:
