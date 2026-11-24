@@ -9,6 +9,9 @@ on:
     branches: [main, app-lojas]
     paths: ["nativo/**", ".github/workflows/app-lojas.yml"]
 
+permissions:
+  contents: write
+
 concurrency:
   group: app-lojas-${{ github.ref }}
   cancel-in-progress: true
@@ -39,6 +42,15 @@ jobs:
           name: android
           path: saida/
           retention-days: 30
+      - name: Guardar os arquivos no ramo builds-android
+        working-directory: saida
+        run: |
+          git init -q -b builds-android
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf "Arquivos gerados automaticamente a partir de %s (%s).\n\n- frances-fm-sem-assinatura.aab: assinar com a chave de envio antes de mandar ao Google Play\n- frances-fm-teste.apk: instalar direto no celular Android para testar\n" "${GITHUB_SHA::7}" "$(date -u +%Y-%m-%d)" > LEIA-ME.md
+          git add -A && git commit -qm "Build Android ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" builds-android
 
   ios:
     runs-on: macos-15

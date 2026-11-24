@@ -48,6 +48,9 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;bac
 .ic-btn img{height:12px}
 .soc-adm{border:0;cursor:pointer;opacity:.75}.soc-adm:hover{opacity:1}
 @media (min-width:1024px){.h-links,.h-social{display:flex}.h-mobile .menu-btn{display:none}}
+/* celulares pequenos (até 400 px): logo menor e botão da rádio só com o ícone, para nada sair da tela */
+@media (max-width:400px){.h-logo [data-site=logo],.h-logo .site-logo{height:30px}.h-mobile{gap:6px}.h-mobile .ic-btn{min-width:40px;height:40px;padding:0 10px}}
+@media (max-width:370px){.h-mobile [data-np=city]{display:none}}
 
 /* ---------- herói: player do site ---------- */
 .hero{padding:34px 0 10px}
