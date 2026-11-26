@@ -1,6 +1,38 @@
 {
- "atualizado": "2026-11-25T23:48:39+0000",
+ "atualizado": "2026-11-26T01:08:29+0000",
  "itens": [
+  {
+   "titulo": "CCJ do Senado aprova projeto que obriga bafômetro para motoristas envolvidos em acidentes",
+   "resumo": "Proposta ainda precisa passar pela Câmara e também prevê tornar o homicídio no trânsito inafiançável",
+   "link": "https://francesnews.com.br/post/2026/11/25/47373-ccj-do-senado-aprova-projeto-que-obriga-bafometro-para-motoristas-envolvidos-em-acidentes",
+   "data": "2026-11-25T22:00:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/95ce1faba87a39f1067d.jpg"
+  },
+  {
+   "titulo": "Câmara aprova regras para ensino integral com jornada mínima de sete horas diárias",
+   "resumo": "Projeto segue ao Senado e prevê expansão gradual de vagas, com prioridade para estudantes em situação de vulnerabilidade",
+   "link": "https://francesnews.com.br/post/2026/11/25/47371-camara-aprova-regras-para-ensino-integral-com-jornada-minima-de-sete-horas-diarias",
+   "data": "2026-11-25T21:40:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/f2cbda0db7c0a268258f.jpg"
+  },
+  {
+   "titulo": "AL-101 Norte terá interdição nesta sexta-feira (27); veja os desvios",
+   "resumo": "Bloqueio das 8h às 18h será necessário para instalar passarela metálica; tráfego será desviado pela Rota dos Corais",
+   "link": "https://francesnews.com.br/post/2026/11/25/47370-al-101-norte-tera-interdicao-nesta-sexta-feira-27-veja-os-desvios",
+   "data": "2026-11-25T21:20:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/33acc691ecfb67074160.jpg"
+  },
+  {
+   "titulo": "IBGE prorroga inscrições para 421 vagas em Alagoas com salários de até R$ 5,5 mil",
+   "resumo": "Seleção para recenseador exige ensino fundamental completo; candidatos têm até segunda-feira (30) para se inscrever",
+   "link": "https://francesnews.com.br/post/2026/11/25/47372-ibge-prorroga-inscricoes-para-421-vagas-em-alagoas-com-salarios-de-ate-r-55-mil",
+   "data": "2026-11-25T20:59:00-03:00",
+   "fonte": "Francês News",
+   "imagem": "assets/noticias/1570cb88052affe11c37.jpg"
+  },
   {
    "titulo": "Motociclista pede desculpas e promete reparar carro de luxo depredado em Maceió",
    "resumo": "Maxwell procurou a defesa do empresário Marcelo Cândido e reconheceu que se precipitou ao julgar a colisão",
@@ -8,38 +40,6 @@
    "data": "2026-11-25T20:40:00-03:00",
    "fonte": "Francês News",
    "imagem": "assets/noticias/29e13803c543a7bfb469.jpg"
-  },
-  {
-   "titulo": "SENAI Alagoas abre vagas para instrutores no Agreste e no Sertão",
-   "resumo": "Inscrições seguem até 30 de novembro, de forma on-line",
-   "link": "https://francesnews.com.br/post/2026/11/25/47358-senai-alagoas-abre-vagas-para-instrutores-no-agreste-e-no-sertao",
-   "data": "2026-11-25T20:20:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/c7dec08a6ecc773e6b64.jpg"
-  },
-  {
-   "titulo": "Robson Rodas renuncia à presidência do CSA e anuncia apoio a Christiano Mendonça",
-   "resumo": "Empresário seguirá como conselheiro e pretende disputar cargo na próxima composição do Conselho Deliberativo",
-   "link": "https://francesnews.com.br/post/2026/11/25/47366-robson-rodas-renuncia-a-presidencia-do-csa-e-anuncia-apoio-a-christiano-mendonca",
-   "data": "2026-11-25T20:00:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/f9636fe8a02ae5f1a1fa.jpg"
-  },
-  {
-   "titulo": "Procon Maceió intensifica monitoramento de preços e fiscalização durante a Best Friday",
-   "resumo": "Consumidores devem pesquisar antes de comprar e ficar atentos a falsas promoções",
-   "link": "https://francesnews.com.br/post/2026/11/25/47357-procon-maceio-intensifica-monitoramento-de-precos-e-fiscalizacao-durante-a-best-friday",
-   "data": "2026-11-25T19:45:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/d08c6da164af18f7b9b7.jpg"
-  },
-  {
-   "titulo": "Prefeito Rodrigo Cunha lança projeto Guarda Mirim, que promove visitas e atividades educativas na Segurança Cidadã",
-   "resumo": "Ação leva crianças da rede pública municipal de ensino para conhecer as estruturas e o trabalho da Guarda Municipal",
-   "link": "https://francesnews.com.br/post/2026/11/25/47368-prefeito-rodrigo-cunha-lanca-projeto-guarda-mirim-que-promove-visitas-e-atividades-educativas-na-seguranca-cidada",
-   "data": "2026-11-25T19:42:00-03:00",
-   "fonte": "Francês News",
-   "imagem": "assets/noticias/5f4a434bd2314e7f2ed4.jpg"
   }
  ]
 }
